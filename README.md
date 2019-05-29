@@ -13,7 +13,7 @@
   - [Classes](#clases)
   - [Coordinates](#coordinates)
   - [Font Normalization](#font-normalization)
-  - [Lines](#lines]
+  - [Joining Lines](#joining-lines)
 - [FAQ](#FAQ)
 
 ----
@@ -209,7 +209,7 @@ top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999
 ### Font Normalization
 Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
 
-## Lines
+## Joining Lines
 Lines are handled differently to the rest of the elements. Lines are represented by a `<span class="line"...>
 ` tag and have an additional attribute that provides recommendations on whethere a line is continued on the next line. Normal HTML automatically joins content together on a single line (with wrapping as needed by screen size) unless explictly instructed no to by the use of a `<br>` element or other line breaking elements. PDF files render text in a specified position, but do not retain any line wrapping or joining information. In many cases, rules can be used to determine if a 2 lines should be joined or not. However, there are many ambigious situations where a rule is insufficent. In this version of PDFExtract, we are determining whether to join only with relatively simple rules. Future versions will impliment machine learning approaches to provide intelligence to joining that is able to handle ambigious exceptiions with more accuracy.
 
