@@ -7,13 +7,14 @@
   - [Command-line PDF Extraction](#)
   - [Library PDF Extraction](#library-pdf-extraction)
 - [How It Works](#how-it-works)
-- [Alignment Optimized HTML Format](#alignment-optimized-html-format)
-- [ID Formats](#id-formats)
-- [Classes](#clases)
-- [Coordinates](#coordinates)
-- [Font Normalization](#font-normalization)
+- [Document Format]{#document-format]
+  - [Alignment Optimized HTML](#alignment-optimized-html)
+  - [ID Formats](#id-formats)
+  - [Classes](#clases)
+  - [Coordinates](#coordinates)
+  - [Font Normalization](#font-normalization)
+  - [Lines](#lines]
 - [FAQ](#FAQ)
-
 
 ----
 ## Introduction
@@ -83,7 +84,8 @@ Gaps between lines are used to determine whether the next line is in the same pa
 
 Once the regions boxes are defined, the objects that fall within the boxes can be extracted into a normalized HTML format. 
 
-## Alignment Optimized HTML Format
+## Output HTML Format ##
+### Alignment Optimized HTML
 ```html
 <html>
 	<!--Generated Normalized Fonts-->
@@ -149,7 +151,7 @@ Once the regions boxes are defined, the objects that fall within the boxes can b
 				</p>
 				<p id="page1c1p2" style="top:0px;left:0px;width:100px;height:100px;">
 					<span id="page1c1p2l1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 1</span>
-					<span id="page1c1p2l2" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 2</span>
+					<span id="page1c1p2l2" joinscore=100.00" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 2</span>
 				</p> 
 			</div>
 			<div id="page1f1" class="footer" style="top:0px;left:0px;width:100px;height:100px;">
@@ -165,7 +167,7 @@ Once the regions boxes are defined, the objects that fall within the boxes can b
 </html>
 ```
 
-## ID Formats
+### ID Formats
 The ID of a element is defined by is parent structure with an incremental counter:
 
 - page = page
@@ -179,7 +181,7 @@ The ID of a element is defined by is parent structure with an incremental counte
 
 Page 1, column 1, paragraph 3, line 2 would be written as `page1c1p3l2`.
 
-## Classes
+### Classes
 There are a simple set of class formats for div elements:
 ```sh
 - page - the wrapping boundary of a page. 
@@ -196,7 +198,7 @@ page\header\ p \ span
 page\column\ p \ span
 page\footer\ p \ span
 ```
-## Coordinates
+### Coordinates
 Columns, headers, footers, paragraphs and spans all have `top`, `left`, `width` and `height` parameters as part of the style.
 
 Example
@@ -204,8 +206,23 @@ Example
 ```
 top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999994pt;
 ```
-## Font Normalization
+### Font Normalization
 Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
+
+## Lines
+Lines are handled differently to the rest of the elements. Lines are represented by a `<span class="line"...>
+` tag and have an additional attribute that provides recommendations on whethere a line is continued on the next line. Normal HTML automatically joins content together on a single line (with wrapping as needed by screen size) unless explictly instructed no to by the use of a `<br>` element or other line breaking elements. PDF files render text in a specified position, but do not retain any line wrapping or joining information. In many cases, rules can be used to determine if a 2 lines should be joined or not. However, there are many ambigious situations where a rule is insufficent. In this version of PDFExtract, we are determining whether to join only with relatively simple rules. Future versions will impliment machine learning approaches to provide intelligence to joining that is able to handle ambigious exceptiions with more accuracy.
+
+Sentence joining is designed to be flexible and for custom rules to be applied. PDFExtract impliments Oracle's Nashorn JavaScript engine for custom rules that handle sentence joining without the need to complie the rules into the code. 
+
+TODO: Provide more details and sample rules.
+
+```sh
+function analyzeJoin(sLeft, sRight) {
+	var fJoinScore = 100.00;
+	return fJoinScore;
+}
+```
 
 ## TODO
 - Handle tables
