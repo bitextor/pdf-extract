@@ -34,11 +34,44 @@ PDF Extract is a PDF parser that converts and extracts PDF content into an optim
 Installation instructions are provided in [INSTALL.md](INSTALL.md)
 
 ## Using PDFExtract.jar
-### Single File Extraction
-COPY/PAST IN SAMPLE CODE AND EXAMPLES - FINALIZING
 
-### Batch File List Extraction
-COPY/PAST IN SAMPLE CODE AND EXAMPLES - FINALIZING
+### Command-line PDF Extraction 
+The command-line PDFExtract is contained in the PDFExtract.jar package that may be downloaded and directly executed on all the java-enabled platforms.
+
+For extracting a PDF file to the alignment optimized HTML file type:
+
+```1sh
+java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -o [<options>]
+```
+*Arguments*
+`-I <input_file>` is the path to the source PDF file process for extraction. 
+'-O <output_file>` is the path to the output HTML file after extraction. 
+'-B <batch_file>` is the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
+'-L <log_path>' is the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
+'-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED)
+
+**Example:**
+
+The example below will process *Domain Sample Data* file found in  `/data/mysample/` and write the *Domain Matched Data* to `/data/domain/automotive/en_de/`. Matching data will only be extracted if it scores above the threshold of 0.5.
+
+```sh
+FullProcess.py -dn automotive -s en -t de -dsd /data/mysample/ -dmd /data/domain/ -est 0.5
+```
+
+### Library PDF Extraction
+
+PDFExtract may be usef from within Java with the following import.
+
+```java
+import com.java.app.PDFExtract;
+
+PDFExtract pdf = new PDFExtract(logpath);
+// Single File
+pdf.Extract(inputFile, outputFile, "options");
+
+// Batch File
+pdf.Extract(batchFile, "options");
+```
 
 ----
 ## How It Works
