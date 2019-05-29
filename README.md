@@ -10,7 +10,7 @@
 - [Document Format](#document-format)
   - [Alignment Optimized HTML](#alignment-optimized-html)
   - [ID Formats](#id-formats)
-  - [Classes](#clases)
+  - [Classes](#classes)
   - [Coordinates](#coordinates)
   - [Font Normalization](#font-normalization)
   - [Joining Lines](#joining-lines)
@@ -34,15 +34,18 @@ The command-line PDFExtract is contained in the PDFExtract.jar package that may 
 For extracting a PDF file to the alignment optimized HTML file type:
 
 ```1sh
-java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -o [<options>]
+java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -R [<rule_path>] -T [<number_threads>] -LANG [<language>] -o [<options>]
 ```
 *Arguments*
 - `-I <input_file>` is the path to the source PDF file process for extraction. 
 - `-O <output_file>` is the path to the output HTML file after extraction. 
 - `-B <batch_file>` is the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
 - `-L <log_path>` is the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
-- '-R' <rule_path>` is a custom set of rules to process joins between lines. As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details.
-- `-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED - languages etc.)
+- '-R' <rule_path>` is a custom set of rules to process joins between lines. As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+- `-T' <number_threads> is the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then 1 thread is used.
+- `-LANG <lang>` specifies the language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used. 
+    If `DETECT` is specified instead of a language code, then each paragraph will be processed via Language ID tools to determine the language of the paragraph. The detected language will be used for sentence join analysis. (DETECT is not supported in this version)  
+- `-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED)
 
 **Example:**
 
@@ -216,28 +219,35 @@ Lines are handled differently to the rest of the elements. Lines are represented
 
 Sentence joining is designed to be flexible and for custom rules to be applied. PDFExtract impliments Oracle's Nashorn JavaScript engine for custom rules that handle sentence joining without the need to complie the rules into the code. 
 
-There are 2 functions that if they exist will be called:
-
-- `analyzeJoin(<lines>, <lang>)` - Analyzes the liklihood of the first line joining to the second line (or subsequent lines also if more than 1 line is passed) and returns a score between 0-100. Each line is delimited by \n and should include the full span tag.
+- `analyzeJoins(<lines>, <lang>)` - Analyzes the liklihood of the lines in sequence joining to the following line and adding a `joinScore` attribute with a value between 0-100. Each line is delimited by \n and should include the full span tag.
 
 TODO: Provide more details and sample rules.
 
 ```javascript
-function analyzeJoin(lines, lang) {
+function analyzeJoins(lines, lang) {
 	
-	//<span id="xxx" joinScore="100.00" style="top:0px;left:0px;width:0px;height:0px;">
-	return lines;
+  //<span id="page1c1p1l1" joinScore="100.00" style="top:0px;left:0px;width:0px;height:0px;">
+  switch(lang.toLower()) {
+    case "en":
+      // code block
+      break;
+    case "fr":
+      // code block
+      break;
+    default:
+      // code block
+   }
+   return lines;
 }
-
-function analyzeJoins(lines, lang)
-
-function analyse
 ```
+
+> **Note:**
+>
+> These rules can become very complex depending on the language. Many rules are quite simple at a basic level, but depending on the layout of the page (i.e. indentations around a shape), the joins can be difficult. At present it is recommended to use the `top` and `left` attributes to handle indentation related rules and other similar complexities outside of PDFExtract. Future versions will look to use machine learning models to assist in more ambigious join decisions. Future versions will also support the use of LanguageID technology at a line level to support multiple languages in a single PDF document. This is out of scope for the time being.
 
 ## TODO
 - Handle tables
 - Font normalization still not working
-- Join spans based on models from each language. Simple rules can be applied, but this is not enough for accuracy. This is being finalized now with set of language specific models being built. We will also look to integrating Language ID later on per sentence level rather than passing it in.
 - Right to left languages.
 
 ----
