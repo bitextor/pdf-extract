@@ -11,7 +11,7 @@
 - [ID Formats](#id-formats)
 - [Classes](#clases)
 - [Coordinates](#coordinates)
-
+- [Font Normalization](#font-normalization)
 - [FAQ](#FAQ)
 
 
@@ -145,7 +145,7 @@ Once the regions boxes are defined, the objects that fall within the boxes can b
 			</div>
 			<div id="page1c1" class="column" style="top:0px;left:0px;width:100px;height:100px;">
 				<p id="page1c1p1" class="h1" style="top:0px;left:0px;width:100px;height:100px;">
-					<span id="page1c1p1l1" class="line" style="top:0px;left:0px;width:100px;height:100px;">heading text 1</span>
+					<span id="page1c1p1l1" class="line h1" style="top:0px;left:0px;width:100px;height:100px;">heading text 1</span>
 				</p>
 				<p id="page1c1p2" style="top:0px;left:0px;width:100px;height:100px;">
 					<span id="page1c1p2l1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 1</span>
@@ -204,6 +204,8 @@ Example
 ```
 top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999994pt;
 ```
+## Font Normalization
+Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
 
 ## TODO
 - Handle tables
