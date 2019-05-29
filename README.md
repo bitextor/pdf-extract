@@ -14,12 +14,13 @@
   - [Coordinates](#coordinates)
   - [Font Normalization](#font-normalization)
   - [Joining Lines](#joining-lines)
+  - [Repairing Object Sequences)(#repairing-object-sequences)
 - [FAQ](#FAQ)
 
 ----
 ## Introduction
 ### What is PDFExtract?
-PDF Extract is a PDF parser that converts and extracts PDF content into an optimized HTML format suitable for easy alignment across multiple language sources. While there are many PDF extraction and DOM conversion tools, typically other tools will extract to an HTML format or similar that is designed to be rendered for human consumption, is very heavy and bloated. The extracted format from PDF Extract is simplified and normalized so that it can be easily matched to other documents that contain the same or similar content translated in different languages. Tools such as Bitextor are able to directly process the outputs.
+PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources. The output is intended for this purpose only and not for rendering as HTML in a web broweser. While there are many PDF extraction and HTML DOM conversion tools, none are designed to prepare data for alignment between multilingual websites. Typically, other tools will extract to a HTML format that is designed to be rendered for human consumption, are very heavy and bloated with informaiton that is not needed, while missing information that would be helpful to an aligner. The extracted format from PDFExtract is simplified and normalized so that it can be easily matched to other documents that contain the same or similar content translated in different languages. Tools such as Bitextor are able to directly process the outputs.
 
 ----
 ## Installation
@@ -55,6 +56,8 @@ TODO
 
 PDFExtract may be usef from within Java with the following import.
 
+TODO: UPDATE DOCS TO SHOW ALL OPTIONS THE SAME AS COMMAND LINE
+
 ```java
 import com.java.app.PDFExtract;
 
@@ -70,7 +73,7 @@ pdf.Extract(batchFile, "options");
 ## How It Works
 PDF is a publishing format and is not designed for easy editing and manipulation. At the core of PDF is an advanced imaging model derived from the PostScript page description language. This PDF Imaging Model enables the description of text and graphics in a device-independent and resolution-independent manner. To improve performance for interactive viewing, PDF defines a more structured format than that used by most PostScript language programs. Unlike Postscript, which is a programming language, PDF is based on a structured binary file format that is optimized for high performance in interactive viewing. PDF also includes objects, such as annotations and hypertext links, that are not part of the page content itself but are useful for interactive viewing and document interchange.
 
-Our first step is to extract the PDF content out into a DOM that can be used to further processed. PDFExtract uses the Pdf2Dom Java library as a parser for the CSSBox rendering engine in order to get a DOM designed for rendering in HTML, but not suitable for mining. PDF Extract further processes and mines the DOM into a normalized and simplified HTML format.
+Our first step is to extract the PDF content out into a DOM that can be used to further processed. PDFExtract uses the Pdf2Dom Java library as a parser for the CSSBox rendering engine in order to get a DOM designed for rendering in HTML, but not suitable for mining. PDFExtract further processes and mines the DOM into a normalized and simplified HTML format.
 
 The core concept is very simple. Regions within the PDF are defined as a set of boxes. The lowest level of a box is a letter, then progressively expands to words, lines, paragraphs, columns and pages. Words are merged into lines. Lines are merged into paragraphs. The below examples show the original PDF file in the right, with the page marked in a blue box, columns marked in a red box, paragraphs marked in a green box and lines marked in a blue box. Once the clean boxed regions are defined, the content is merged to create clean HTML. 
 
@@ -217,9 +220,15 @@ Sentence joining is designed to be flexible and for custom rules to be applied. 
 
 - `analyzeJoins(<lines>, <lang>)` - Analyzes the liklihood of the lines in sequence joining to the following line and adding a `joinScore` attribute with a value between 0-100. Each line is delimited by \n and should include the full span tag.
 
+## Repairing Object Sequences
+Some PDF tools export malformed PDF content in some cases. For example, instead of rendering a word as a single object, a set of letters are rendered as individual objects. There are many exceptions that need to be handled. Common exceptions are handled wihtin the Java code. Additional custom exceptions can be handled in a JavaScript function.
+
+- `repairObjectSequence(<line>)` - Analyzes the line of data and merges content where needed to single words. The input is all objects within the line and the output is the updated line that will be merged back into the page.
+
 TODO: Provide more details and sample rules.
 
 ```javascript
+//Analyzes the lines in a chunk/paragraph to deterine if a line should be joined to the line that follows it.
 function analyzeJoins(lines, lang) {
 	
   //<span id="page1c1p1l1" joinScore="100.00" style="top:0px;left:0px;width:0px;height:0px;">
@@ -234,6 +243,12 @@ function analyzeJoins(lines, lang) {
       // code block
    }
    return lines;
+}
+
+//Adjusts the line to repair poorly rendered objects that may be split, but are one.
+function repairObjectSequence(line) {
+
+   return line;
 }
 ```
 
