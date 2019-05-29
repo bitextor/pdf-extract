@@ -8,6 +8,10 @@
   - [Library PDF Extraction](#library-pdf-extraction)
 - [How It Works](#how-it-works)
 - [Alignment Optimized HTML Format](#alignment-optimized-html-format)
+- [ID Formats](#id-formats)
+- [Classes](#clases)
+- [Coordinates](#coordinates)
+
 - [FAQ](#FAQ)
 
 
@@ -32,11 +36,11 @@ For extracting a PDF file to the alignment optimized HTML file type:
 java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -o [<options>]
 ```
 *Arguments*
-`-I <input_file>` is the path to the source PDF file process for extraction. 
-'-O <output_file>` is the path to the output HTML file after extraction. 
-'-B <batch_file>` is the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
-'-L <log_path>' is the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
-'-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED)
+- `-I <input_file>` is the path to the source PDF file process for extraction. 
+- `-O <output_file>` is the path to the output HTML file after extraction. 
+- `-B <batch_file>` is the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
+- `-L <log_path>` is the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
+- `-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED - languages etc.)
 
 **Example:**
 
@@ -162,6 +166,18 @@ Once the regions boxes are defined, the objects that fall within the boxes can b
 ```
 
 ## ID Formats
+The ID of a element is defined by is parent structure with an incremental counter:
+
+- page = page
+- header = h
+- footer = f
+- column = c
+- paragraph = p
+- line = l
+
+**Example**
+
+Page 1, column 1, paragraph 3, line 2 would be written as `page1c1p3l2`.
 
 ## Classes
 There are a simple set of class formats for div elements:
@@ -192,7 +208,8 @@ top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999
 ## TODO
 - Handle tables
 - Font normalization still not working
-- Join spans based on models from each language. Simple rules can be applied, but this is not enough for accuracy. 
+- Join spans based on models from each language. Simple rules can be applied, but this is not enough for accuracy. This is being finalized now with set of language specific models being built. We will also look to integrating Language ID later on per sentence level rather than passing it in.
+- Right to left languages.
 
 ----
 ## FAQ
