@@ -7,7 +7,7 @@
   - [Command-line PDF Extraction](#)
   - [Library PDF Extraction](#library-pdf-extraction)
 - [How It Works](#how-it-works)
-- [Document Format]{#document-format]
+- [Document Format](#document-format)
   - [Alignment Optimized HTML](#alignment-optimized-html)
   - [ID Formats](#id-formats)
   - [Classes](#clases)
@@ -41,6 +41,7 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 - `-O <output_file>` is the path to the output HTML file after extraction. 
 - `-B <batch_file>` is the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
 - `-L <log_path>` is the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
+- '-R' <rule_path>` is a custom set of rules to process joins between lines. As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details.
 - `-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED - languages etc.)
 
 **Example:**
@@ -215,13 +216,22 @@ Lines are handled differently to the rest of the elements. Lines are represented
 
 Sentence joining is designed to be flexible and for custom rules to be applied. PDFExtract impliments Oracle's Nashorn JavaScript engine for custom rules that handle sentence joining without the need to complie the rules into the code. 
 
+There are 2 functions that if they exist will be called:
+
+- `analyzeJoin(<lines>, <lang>)` - Analyzes the liklihood of the first line joining to the second line (or subsequent lines also if more than 1 line is passed) and returns a score between 0-100. Each line is delimited by \n and should include the full span tag.
+
 TODO: Provide more details and sample rules.
 
-```sh
-function analyzeJoin(sLeft, sRight) {
-	var fJoinScore = 100.00;
-	return fJoinScore;
+```javascript
+function analyzeJoin(lines, lang) {
+	
+	//<span id="xxx" joinScore="100.00" style="top:0px;left:0px;width:0px;height:0px;">
+	return lines;
 }
+
+function analyzeJoins(lines, lang)
+
+function analyse
 ```
 
 ## TODO
