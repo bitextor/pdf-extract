@@ -49,11 +49,7 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 
 **Example:**
 
-The example below will process *Domain Sample Data* file found in  `/data/mysample/` and write the *Domain Matched Data* to `/data/domain/automotive/en_de/`. Matching data will only be extracted if it scores above the threshold of 0.5.
-
-```sh
-FullProcess.py -dn automotive -s en -t de -dsd /data/mysample/ -dmd /data/domain/ -est 0.5
-```
+TODO
 
 ### Library PDF Extraction
 
