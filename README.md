@@ -2,25 +2,12 @@
 ## Table of Contents
 - [Introduction](#introduction)
   - [What is PDFExtract](#what-is-pdfextract)
-  - [Approach](#approach)
 - [Installation](#installation)
-- [Processes and Tools](#processes-and-tools)
-  - [Full Process](#full-process)
-  - [Output Files](#output-files)
-    - [Extracted Domain Matched Data](#extracted-domain-matched-data)
-    - [Model](#model)
-    - [Scores](#scores)
-  - [Individual Tools](#individual-tools)
-    - [TokenizeDomainSampleData.py](#tokenizedomainsampledatapy)
-    - [TokenizePoolData.py](#tokenizepooldatapy)
-    - [TrainDomainModel.py](#traindomainmodelpy)
-    - [ScorePoolData.py](#scorepooldatapy)
-    - [ExtractMatchedDomainData.py](#extractmatcheddomaindatapy)
-  - [Configuration File – config.json](#configuration-file--configjson)
-  - [Pool Data Folder Structure](#pool-data-folder-structure)
-- [Dependencies](#dependencies)
-  - [KenLM](#kenlm)
-  - [Tokenizer](#tokenizer)
+- [Using PDFExtract.jar](#using-pdfextractjar)
+  - [Command-line PDF Extraction](#)
+  - [Library PDF Extraction](#library-pdf-extraction)
+- [How It Works](#how-it-works)
+- [Alignment Optimized HTML Format](#alignment-optimized-html-format)
 - [FAQ](#FAQ)
 
 
@@ -33,6 +20,7 @@ PDF Extract is a PDF parser that converts and extracts PDF content into an optim
 ## Installation
 Installation instructions are provided in [INSTALL.md](INSTALL.md)
 
+----
 ## Using PDFExtract.jar
 
 ### Command-line PDF Extraction 
@@ -91,7 +79,7 @@ Gaps between lines are used to determine whether the next line is in the same pa
 
 Once the regions boxes are defined, the objects that fall within the boxes can be extracted into a normalized HTML format. 
 
-##Normalized HTML Format.
+## Alignment Optimized HTML Format
 ```html
 <html>
 	<!--Generated Normalized Fonts-->
@@ -147,50 +135,64 @@ Once the regions boxes are defined, the objects that fall within the boxes can b
 	<body>
 		<div id="page1" class="page">
 			<div id="page1h1" class="header" style="top:0px;left:0px;width:100px;height:100px;" >
-				<p id="page1h1p1" class="text" style="top:0px;left:0px;width:100px;height:100px;">header text</p>
+				<p id="page1h1p1" style="top:0px;left:0px;width:100px;height:100px;">
+					<span id="page1h1pl1" class="line" style="top:0px;left:0px;width:100px;height:100px;">header text</span>
+				</p>
 			</div>
 			<div id="page1c1" class="column" style="top:0px;left:0px;width:100px;height:100px;">
-				<p id="page1c1p1" class="h1" style="top:0px;left:0px;width:100px;height:100px;">heading text 1</p>
-				<p id="page1c1p2" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 text</p>
-				<p id="page1c1p3" style="top:0px;left:0px;width:100px;height:100px;">paragraph 3 text</p>
-				<p id="page1c1p4" style="top:0px;left:0px;width:100px;height:100px;">paragraph 4 text</p>
-			</div>
-			<div id="page1c2" class="column" style="top:0px;left:0px;width:100px;height:100px;">
-				<p id="page1c2p1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 1 text</p>
-				<p id="page1c2p2" class="h2" style="top:0px;left:0px;width:100px;height:100px;">heading text 2</p>
-				<p id="page1c2p3" style="top:0px;left:0px;width:100px;height:100px;">paragraph 3 text</p>
-				<p id="page1c2p4" style="top:0px;left:0px;width:100px;height:100px;">paragraph 4 text</p>
+				<p id="page1c1p1" class="h1" style="top:0px;left:0px;width:100px;height:100px;">
+					<span id="page1c1p1l1" class="line" style="top:0px;left:0px;width:100px;height:100px;">heading text 1</span>
+				</p>
+				<p id="page1c1p2" style="top:0px;left:0px;width:100px;height:100px;">
+					<span id="page1c1p2l1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 1</span>
+					<span id="page1c1p2l2" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 2</span>
+				</p> 
 			</div>
 			<div id="page1f1" class="footer" style="top:0px;left:0px;width:100px;height:100px;">
-				<p id="page1f1p1" style="top:0px;left:0px;width:100px;height:100px;">footer text</p>
+				<p id="page1f1p1" style="top:0px;left:0px;width:100px;height:100px;">
+					<span id="page1f1pl1" class="line" style="top:0px;left:0px;width:100px;height:100px;">footer text</span>
+				</p>
 			</div>
 		</div>
 		<div id="page2" class="page">
-			<div id="page2h1" class="header" style="top:0px;left:0px;width:100px;height:100px;" >
-				<p id="page2h1p1" style="top:0px;left:0px;width:100px;height:100px;">header text</p>
-			</div>
-			<div id="page2c1" class="column" style="top:0px;left:0px;width:100px;height:100px;">
-				<p id="page2c1p1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 1 text</p>
-				<p id="page2c1p2" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 text</p>
-				<p id="page2c1p3" style="top:0px;left:0px;width:100px;height:100px;">paragraph 3 text</p>
-				<p id="page2c1p4" style="top:0px;left:0px;width:100px;height:100px;">paragraph 4 text</p>
-			</div>
-			<div id="page2c2" class="column" style="top:0px;left:0px;width:100px;height:100px;">
-				<p id="page2c2p1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 1 text</p>
-				<p id="page2c2p2" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 text</p>
-				<p id="page2c2p3" style="top:0px;left:0px;width:100px;height:100px;">paragraph 3 text</p>
-				<p id="page2c2p4" style="top:0px;left:0px;width:100px;height:100px;">paragraph 4 text</p>
-			</div>
-			<div id="page2f1" class="footer" style="top:0px;left:0px;width:100px;height:100px;">
-				<p id="page2f1p1" style="top:0px;left:0px;width:100px;height:100px;">footer text 1</p>
-				<p id="page2f1p2" style="top:0px;left:0px;width:100px;height:100px;">footer text 2</p>
-			</div>
+			...
 		</div>
 	</body>
 </html>
 ```
 
-##
+## ID Formats
+
+## Classes
+There are a simple set of class formats for div elements:
+```sh
+- page - the wrapping boundary of a page. 
+- header - the wrapping boundary of the page header.
+- footer - the wrapping boundary of the page footer.
+- column - the wrapping boundary of a column.
+```
+Within a header, column or footer, the *p* element is used to mark a paragraph.
+Within a paragraph, the *span* with a class name of `"line"` element is used to mark a line. If a span is encountered without the line class, then the style is used to specify special formatting that may be useful, but it is still within a line.
+
+The basic structure is as follows
+```sh
+page\header\ p \ span
+page\column\ p \ span
+page\footer\ p \ span
+```
+## Coordinates
+Columns, headers, footers, paragraphs and spans all have `top`, `left`, `width` and `height` parameters as part of the style.
+
+Example
+
+```
+top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999994pt;
+```
+
+## TODO
+- Handle tables
+- Font normalization still not working
+- Join spans based on models from each language. Simple rules can be applied, but this is not enough for accuracy. 
 
 ----
 ## FAQ
