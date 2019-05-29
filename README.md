@@ -14,7 +14,7 @@
   - [Coordinates](#coordinates)
   - [Font Normalization](#font-normalization)
   - [Joining Lines](#joining-lines)
-  - [Repairing Object Sequences)(#repairing-object-sequences)
+  - [Repairing Object Sequences](#repairing-object-sequences)
 - [FAQ](#FAQ)
 
 ----
@@ -34,23 +34,43 @@ The command-line PDFExtract is contained in the PDFExtract.jar package that may 
 
 For extracting a PDF file to the alignment optimized HTML file type:
 
-```1sh
+```sh
 java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -R [<rule_path>] -T [<number_threads>] -LANG [<language>] -o [<options>]
 ```
 *Arguments*
-- `-I <input_file>` is the path to the source PDF file process for extraction. 
-- `-O <output_file>` is the path to the output HTML file after extraction. 
-- `-B <batch_file>` is the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
-- `-L <log_path>` is the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
-- `-R' <rule_path>` is a custom set of rules to process joins between lines. As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
-- `-T' <number_threads> is the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then 1 thread is used.
+- `-I <input_file>` specifies the path to the source PDF file process for extraction. 
+- `-O <output_file>` specifies the path to the output HTML file after extraction. 
+- `-B <batch_file>` specifies the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
+- `-L <log_path>` specifies the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
+- `-R <rule_path>` specifies a custom set of rules to process joins between lines. As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+- `-T <number_threads>` specifies the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then the default valur of 1 thread is used.
 - `-LANG <lang>` specifies the language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used. 
     If `DETECT` is specified instead of a language code, then each paragraph will be processed via Language ID tools to determine the language of the paragraph. The detected language will be used for sentence join analysis. (DETECT is not supported in this version)  
 - `-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED)
 
 **Example:**
 
-TODO
+This example processes a single English PDF file in English.
+
+```sh
+java -jar PDFExtract.jar -I /test/pdf/myfile.pdf -O /test/htm/myfile.htm -LANG en
+```
+
+This example processes a batch of files as specified in `batch2.txt` using 3 threads and writing to a user specified log file. Custom JavaScript rules for sentence joining and object sequence repairs is also specified.
+
+```sh
+java -jar PDFExtract.jar -B /test/batchlists/batch2.txt -L /tests/logs/batch2.log -R /test/customrules/ruleset1.js -T 3 
+```
+
+The contents of `batch2.txt` are:
+```text
+/test/pdf/myfile1.pdf	/test/htm/myfile1.htm
+/test/pdf/myfile2.pdf	/test/htm/myfile2.htm
+/test/pdf/myfile3.pdf	/test/htm/myfile3.htm
+/test/pdf/myfile4.pdf	/test/htm/myfile4.htm
+/test/pdf/myfile5.pdf	/test/htm/myfile5.htm
+/test/pdf/myfile6.pdf	/test/htm/myfile6.htm
+```
 
 ### Library PDF Extraction
 
@@ -73,21 +93,27 @@ pdf.Extract(batchFile, "options");
 ## How It Works
 PDF is a publishing format and is not designed for easy editing and manipulation. At the core of PDF is an advanced imaging model derived from the PostScript page description language. This PDF Imaging Model enables the description of text and graphics in a device-independent and resolution-independent manner. To improve performance for interactive viewing, PDF defines a more structured format than that used by most PostScript language programs. Unlike Postscript, which is a programming language, PDF is based on a structured binary file format that is optimized for high performance in interactive viewing. PDF also includes objects, such as annotations and hypertext links, that are not part of the page content itself but are useful for interactive viewing and document interchange.
 
-Our first step is to extract the PDF content out into a DOM that can be used to further processed. PDFExtract uses the Pdf2Dom Java library as a parser for the CSSBox rendering engine in order to get a DOM designed for rendering in HTML, but not suitable for mining. PDFExtract further processes and mines the DOM into a normalized and simplified HTML format.
+Our first step is to extract the PDF content out into a DOM that can be used to further processed. PDFExtract uses the Pdf2Dom Java library as a parser for the CSSBox rendering engine in order to get a DOM designed for rendering in HTML, but not suitable for mining. PDFExtract further processes and mines the DOM into a normalized and simplified HTML format. 
 
 The core concept is very simple. Regions within the PDF are defined as a set of boxes. The lowest level of a box is a letter, then progressively expands to words, lines, paragraphs, columns and pages. Words are merged into lines. Lines are merged into paragraphs. The below examples show the original PDF file in the right, with the page marked in a blue box, columns marked in a red box, paragraphs marked in a green box and lines marked in a blue box. Once the clean boxed regions are defined, the content is merged to create clean HTML. 
+
+All content in the HTML output is sorted by the position it appears on the page using the top left coordinates. This sorting is necessary as the order that the information appeared in the PDF file may not be in sequence. 
+
+>Note: This will likely not work on languages that are rendered right-to-left and has not been tested at present for such languages.
 
 ![alt text](Example1.png "Example 1")
 
 Gaps between lines are used to determine whether the next line is in the same paragraph or another. 
 
-**NOTE:** Some issues remain in very large fonts and defining paragraphs. 
+**NOTE:** Some issues remain in very large fonts and defining paragraphs. These are being resolved now.
 
 ![alt text](Example2.png "Example 2")
 
 Once the regions boxes are defined, the objects that fall within the boxes can be extracted into a normalized HTML format. 
 
 ## Output HTML Format ##
+The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
+
 ### Alignment Optimized HTML
 ```html
 <html>
@@ -197,9 +223,7 @@ Within a paragraph, the *span* with a class name of `"line"` element is used to 
 
 The basic structure is as follows
 ```sh
-page\header\ p \ span
-page\column\ p \ span
-page\footer\ p \ span
+<div class="page"> \ <div class="column|header|footer"> \ <p> \ <span> 
 ```
 ### Coordinates
 Columns, headers, footers, paragraphs and spans all have `top`, `left`, `width` and `height` parameters as part of the style.
@@ -224,6 +248,10 @@ Sentence joining is designed to be flexible and for custom rules to be applied. 
 Some PDF tools export malformed PDF content in some cases. For example, instead of rendering a word as a single object, a set of letters are rendered as individual objects. There are many exceptions that need to be handled. Common exceptions are handled wihtin the Java code. Additional custom exceptions can be handled in a JavaScript function.
 
 - `repairObjectSequence(<line>)` - Analyzes the line of data and merges content where needed to single words. The input is all objects within the line and the output is the updated line that will be merged back into the page.
+
+
+## Detecting Custom Headers and Footers
+While the position of text on a page is helpful in determining headers and footers, it is often difficult to accurately detect a header and footer across languages. Custom logic can be added without recompiling using the `isHeader` and `isFooter` functions. 
 
 TODO: Provide more details and sample rules.
 
@@ -250,6 +278,18 @@ function repairObjectSequence(line) {
 
    return line;
 }
+
+//Custom detection that would identify a section as a header. This is only called if internal logic has not already identified the content as a header and is within the first 5 paragraphs on the page.
+function isHeader(lines, pageWidth, pageHeight) {
+   //code block
+   return false;
+}
+
+//Custom detection that would identify a section as a footer. This is only called if internal logic has not already identified the content as a footer and is within the last 5 paragraphs on the page.
+function isFooter(lines, pageWidth, pageHeight) {
+  //code block
+  return false;
+}
 ```
 
 > **Note:**
@@ -260,6 +300,8 @@ function repairObjectSequence(line) {
 - Handle tables
 - Font normalization still not working
 - Right to left languages.
+- Autodetect language 
+- Support for marking up language in the HTML output when there are more than 1 language in a document. 
 
 ----
 ## FAQ
