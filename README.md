@@ -137,18 +137,8 @@ Columns are calculated by analyzing the vertical path of paragraphs to determine
 ### Pages
 Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. 
 
-----
-
-Gaps between lines are used to determine whether the next line is in the same paragraph or another. 
-
-**NOTE:** Some issues remain in very large fonts and defining paragraphs. These are being resolved now.
-
-![alt text](Example2.png "Example 2")
-
-Once the regions boxes are defined, the objects that fall within the boxes can be extracted into a normalized HTML format. 
-
 ## Output HTML Format ##
-The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
+Once the various page regions are defined as described above, the objects that fall within the each region can be extracted into a normalized HTML format. The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
 
 ### Alignment Optimized HTML
 ```html
