@@ -4,9 +4,15 @@
   - [What is PDFExtract](#what-is-pdfextract)
 - [Installation](#installation)
 - [Using PDFExtract.jar](#using-pdfextractjar)
-  - [Command-line PDF Extraction](#)
+  - [Command-line PDF Extraction](#command-line-pdf-extraction)
   - [Library PDF Extraction](#library-pdf-extraction)
 - [How It Works](#how-it-works)
+  - [Basic Process](#basic-process)
+  - [Words](#words)
+  - [Lines](#lines)
+  - [Paragraphs](#paragraphs)
+  - [Columns](#columns)
+  - [Pages](#pages)
 - [Document Format](#document-format)
   - [Alignment Optimized HTML](#alignment-optimized-html)
   - [ID Formats](#id-formats)
@@ -126,7 +132,7 @@ Lines may have different left and right offsets such as for indentation and wrap
 ### Columns
 Columns are calculated by analyzing the vertical path of paragraphs to determine in they are in a column. Generally, paragraphs will have similar widths and if there is a second column, then it will be detectable by looking at the X positions of paragraphs for similarity. 
 
-![alt text](Column.png)
+![alt text](Column.jpg)
 
 ### Pages
 Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. 
