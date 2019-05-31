@@ -1,4 +1,17 @@
 # PDFExtract
+
+----
+> NOTE: STATUS
+> Code is functional and working, but not yet ready to release. Afte issues/bugs found in unit tests, some rework and refinement underway. Final version for V1 is targeted for release on June 7. This is the latest executable code that is functioal. Currently being reworked and bug fixed:
+> - Multithreading has some bugs, but working for most cases. 
+> - Custom javascript rule support being fine tuned. 
+> - Column detection being reworked with much more accurate approach.
+> - Current development version does not run, but will run shortly after unit integration is complete after current changes. This version uploaded runs. 
+> Command:
+> java -jar PDFExtract.jar -I "sample.pdf" -O "sample.html" -LANG "en"
+
+----
+
 ## Table of Contents
 - [Introduction](#introduction)
   - [What is PDFExtract](#what-is-pdfextract)
