@@ -103,6 +103,36 @@ All content in the HTML output is sorted by the position it appears on the page 
 
 ![alt text](Example1.png "Example 1")
 
+### Basic Process
+#### Sort Objects
+Objects in a PDF are not necessarily in sequence. As rendering is using X and Y coordinates, they can be in any order and still look correct visually. For example, a page footer could be in the middle of the objects in sequence, not the last set of objects as they would appear visually. The first task is to sort the objects by X and Y coordinates at a page by page level. 
+Words
+Words are first identified and repaired. PDF will usually have an entire word in one object, but sometimes the PDF creation tool will create words using multiple objects. In some cases, as granular as 1 object per letter. Visually in a PDF this looks fine, however, in order to export the text into a useable format for processing, the objects must be combined into words.  
+### Words
+
+![alt text](Words.png)
+
+### Lines
+Once words have been repaired, the next stage is to identify the lines by grouping words in sequence together.
+ 
+![alt text](Line.png)
+
+### Paragraphs
+Once lines have been identified, they can be analyzed as groups of lines by measuring the spacing between lines. When the line spacing varies, it is typically a new paragraph. 
+Lines may have different left and right offsets such as for indentation and wrapping. The top and left most position can be recorded as X and Y values of the lines for the paragraph. The width of the paragraph is calculated by looking at the right most position of all lines. The width can be calculated looking at the Y position + the height of the lower most line. 
+ 
+![alt text](Paragraph.png)
+ 
+### Columns
+Columns are calculated by analyzing the vertical path of paragraphs to determine in they are in a column. Generally, paragraphs will have similar widths and if there is a second column, then it will be detectable by looking at the X positions of paragraphs for similarity. 
+
+![alt text](Column.png)
+
+### Pages
+Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. 
+
+----
+
 Gaps between lines are used to determine whether the next line is in the same paragraph or another. 
 
 **NOTE:** Some issues remain in very large fonts and defining paragraphs. These are being resolved now.
