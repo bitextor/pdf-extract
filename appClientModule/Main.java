@@ -14,13 +14,17 @@ public class Main {
 				
 			}
 
-			String input = "", output = "", batchfile = "", options = "", logpath = "", rulepath = "", threadcount = "", language = "";
+			String input = "", output = "", batchfile = "", options = "", logpath = "", rulepath = "", threadcount = "", language = "", debug = "";
 			String key = "";
 
 			for (String parm : args) {
 				
 				if (parm.startsWith("-")) {
 					key = parm.substring(1);
+					if (key.equals("D")) {
+						debug = "1";
+						key = "";
+					}
 				}else {
 					if (key.equals("I")) {
 						input = parm;
@@ -47,7 +51,7 @@ public class Main {
 				
 				try {
 					PDFExtract oExtractor = new PDFExtract(logpath);
-					oExtractor.Extract(input, output, rulepath, language, options);
+					oExtractor.Extract(input, output, rulepath, language, options, common.getInt(debug));
 				}catch(Exception e) {
 					common.print(input, "Extract fail: " + e.getMessage());
 				}
@@ -56,7 +60,7 @@ public class Main {
 
 				try {
 					PDFExtract oExtractor = new PDFExtract(logpath);
-					oExtractor.Extract(batchfile, rulepath, common.getInt(threadcount), language, options);
+					oExtractor.Extract(batchfile, rulepath, common.getInt(threadcount), language, options, common.getInt(debug));
 				}catch(Exception e) {
 					common.print(batchfile, "Extract fail: " + e.getMessage());
 				}
