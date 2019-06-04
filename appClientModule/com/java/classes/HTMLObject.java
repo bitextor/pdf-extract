@@ -21,5 +21,6 @@ public class HTMLObject {
 	    public float lineheight;
 	    public float width;
 	    public String text;
+	    public String style;
 	}
 }
