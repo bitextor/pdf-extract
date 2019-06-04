@@ -1,5 +1,4 @@
 # PDFExtract
-
 ----
 > NOTE: STATUS
 > Code is functional and working, but not yet ready to release. Afte issues/bugs found in unit tests, some rework and refinement underway. Final version for V1 is targeted for release on June 7. This is the latest executable code that is functioal. Currently being reworked and bug fixed:
@@ -11,7 +10,6 @@
 > java -jar PDFExtract.jar -I "sample.pdf" -O "sample.html" -LANG "en"
 
 ----
-
 ## Table of Contents
 - [Introduction](#introduction)
   - [What is PDFExtract](#what-is-pdfextract)
@@ -54,7 +52,7 @@ The command-line PDFExtract is contained in the PDFExtract.jar package that may 
 For extracting a PDF file to the alignment optimized HTML file type:
 
 ```sh
-java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -R [<rule_path>] -T [<number_threads>] -LANG [<language>] -o [<options>]
+java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -R [<rule_path>] -T [<number_threads>] -LANG [<language>] -D -o [<options>]
 ```
 *Arguments*
 - `-I <input_file>` specifies the path to the source PDF file process for extraction. 
@@ -65,7 +63,8 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 - `-T <number_threads>` specifies the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then the default valur of 1 thread is used.
 - `-LANG <lang>` specifies the language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used. 
     If `DETECT` is specified instead of a language code, then each paragraph will be processed via Language ID tools to determine the language of the paragraph. The detected language will be used for sentence join analysis. (DETECT is not supported in this version)  
-- `-o <options>` specifies control parameters. (LIST TO COME, STILL BEING REFINED)
+- `-D` enables Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+- `-o <options>` specifies control parameters. (Reserved for future use where more conifgurable parameters will be permitted.)
 
 **Example:**
 
@@ -336,12 +335,25 @@ function isFooter(lines, pageWidth, pageHeight) {
 > These rules can become very complex depending on the language. Many rules are quite simple at a basic level, but depending on the layout of the page (i.e. indentations around a shape), the joins can be difficult. At present it is recommended to use the `top` and `left` attributes to handle indentation related rules and other similar complexities outside of PDFExtract. Future versions will look to use machine learning models to assist in more ambigious join decisions. Future versions will also support the use of LanguageID technology at a line level to support multiple languages in a single PDF document. This is out of scope for the time being.
 
 ## TODO
+The below list is a set of features planned for future
+- Right-to-left languages.
+  - This code is untested on right-to-left languages and may need to be modified to support languages such as Arabic.
+- Autodetect language. 
+  - Out of scope for this version. Will be added into a future release, but will greatly slow down the processing so should be used only when needed.
+  - When implimented, each line will be processed for language identification and tagged with the language information. This will improve sentence joining.
+- Advanced sentence joining analysis. 
+  - In order to join sentences, the language must be known. Some simplistic rules can be applied using the analyzeJoins JavaScript that deal with language specific joins or the join logic can be handled externally. Future versions will have the option to use models to assist in the decision to join lines or to keep them split.
 - Handle tables
-- Font normalization still not working
-- Right to left languages.
-- Autodetect language 
-- Support for marking up language in the HTML output when there are more than 1 language in a document. 
+  - While columns are detected and handled, table detection is very complex and difficult. This is outside of the scope of the intial project version. As most alignable content is not in tables, this does not have a major impact on the outcome of bilingual corpus processing.
 
 ----
 ## FAQ
-TODO
+### Can the HTML output be loaded into the browser to view?
+Yes. By default the HTML output is not in a format that will render well in a browser as it is formatted for optimal processing and hot intended to be viewed by humans. Use the `-D` option to output the HTML in a more visual format.
+
+### Can this tool extract text from images embedded in PDF files?
+No. This tool processes only text. It is not an OCR tool, it is only able to extract text from PDF if the data is already in text format.
+
+### Why are the fonts normalized?
+The fonts are normalized so that the file is significantly smaller and easier to align. When comparing a translated document in 2 or more languages, the structure should be very similar, with headings and other features comparable in both documents. Depending on the language, different fonts may be used. By normalizing the fonts, it is possible to use the normalized font class names as part of the alignment process.
+
