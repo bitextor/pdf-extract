@@ -5,52 +5,7 @@
 <!--Standard text font for the document has no class assigned to the paragraph-->
 <!--Classes page, header, footer, column do not need a style. They are for classification only,
     but a style can be applied for visual rendering -->
-<style>
-	.h1 {
-		font-family:arial;
-		font-weight:bold;
-		font-size:20pt;
-		text-decoration:normal;
-		font-style:italic;
-	}
-	.h2 {
-		font-family:arial;
-		font-weight:bold;
-		font-size:18pt;
-		text-decoration:underline;
-		font-style:normal;
-	}
-</style>
-<!--
-<style>
-	body {
-		font-family:arial;
-		font-weight:normal;
-		font-size:10pt;			
-		text-decoration:normal;
-		font-style:normal;
-	}
-	p{
-		position: relative;
-		border:1px solid red;
-	}
-	.page{ 
-		border:1px dashed silver;
-	}
-	.header{
-		position: relative;
-		border:1px solid cyan;
-	}
-	.footer{
-		position: relative;
-		border:1px solid purple;
-	}
-	.column{
-		position: relative;
-		border:1px solid orange;
-	}
-</style>
--->
+<style>[STYLE]</style>
 <body>[BODY]</body>
 </html>]]>
 </body>
@@ -58,43 +13,31 @@
 <![CDATA[<div id="page[PAGEID]" class="page">[PAGE]</div>]]>
 </page>
 <header>
-<![CDATA[<div id="page[PAGEID]h[HEADERID]" class="header" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;" >[HEADER]</div>]]>
+<![CDATA[<div id="page[HEADERID]" class="header" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;" >[HEADER]</div>]]>
 </header>
 <headerparagraph>
-<![CDATA[<p id="page[PAGEID]h[HEADERID]p[PARAGRAPHID]" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[HEADERPARAGRAPH]</p>]]>
+<![CDATA[	<p id="page[HEADERPARAGRAPHID]" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[HEADERPARAGRAPH]	</p>]]>
 </headerparagraph>
 <headerparagraphline>
-<![CDATA[<span id="page[PAGEID]h[HEADERID]p[PARAGRAPHID]l[LINEID]" class="line" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[HEADERPARAGRAPHLINE]</span>]]>
+<![CDATA[		<span id="page[HEADERPARAGRAPHLINEID]" class="line" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;[LINESTYLE]">[HEADERPARAGRAPHLINE]</span>]]>
 </headerparagraphline>
 <column>
-<![CDATA[<div id="page[PAGEID]c[COLUMNID]" class="column" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMN]</div>]]>
+<![CDATA[<div id="page[COLUMNID]" class="column" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMN]</div>]]>
 </column>
 <columnparagraph>
-<![CDATA[<p id="page[PAGEID]c[COLUMNID]p[PARAGRAPHID]" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNPARAGRAPH]</p>]]>
+<![CDATA[	<p id="page[COLUMNPARAGRAPHID]" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNPARAGRAPH]	</p>]]>
 </columnparagraph>
 <columnparagraphline>
-<![CDATA[<span id="page[PAGEID]c[COLUMNID]p[PARAGRAPHID]l[LINEID]"  class="line" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNPARAGRAPHLINE]</span>]]>
+<![CDATA[		<span id="page[COLUMNPARAGRAPHLINEID]" class="line" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;[LINESTYLE]">[COLUMNPARAGRAPHLINE]</span>]]>
 </columnparagraphline>
-<columnh1>
-<![CDATA[<p id="page[PAGEID]h[COLUMNID]p[PARAGRAPHID]" class="h1" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNH1]</p>]]>
-</columnh1>
-<columnh1line>
-<![CDATA[<span id="page[PAGEID]c[COLUMNID]p[PARAGRAPHID]l[LINEID]" class="line h1" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNH1LINE]</span>]]>
-</columnh1line>
-<columnh2>
-<![CDATA[<p id="page[PAGEID]h[COLUMNID]p[PARAGRAPHID]" class="h2" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNH2]</p>]]>
-</columnh2>
-<columnh2line>
-<![CDATA[<span id="page[PAGEID]c[COLUMNID]p[PARAGRAPHID]l[LINEID]" class="line h2" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[COLUMNH2LINE]</span>]]>
-</columnh2line>
 <footer>
-<![CDATA[<div id="page[PAGEID]f[FOOTERID]" class="footer" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[FOOTER]</div>]]>
+<![CDATA[<div id="page[FOOTERID]" class="footer" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[FOOTER]</div>]]>
 </footer>
 <footerparagraph>
-<![CDATA[<p id="page[PAGEID]f[FOOTERID]p[PARAGRAPHID]" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[FOOTERPARAGRAPH]</p>]]>
+<![CDATA[	<p id="page[FOOTERPARAGRAPHID]" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[FOOTERPARAGRAPH]	</p>]]>
 </footerparagraph>
 <footerparagraphline>
-<![CDATA[<span id="page[PAGEID]f[FOOTERID]p[PARAGRAPHID]l[LINEID]" class="line" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;">[FOOTERPARAGRAPHLINE]</span>]]>
+<![CDATA[		<span id="page[FOOTERPARAGRAPHLINEID]" class="line" style="top:[TOP]pt;left:[LEFT]pt;width:[WIDTH]pt;height:[HEIGHT]pt;[LINESTYLE]">[FOOTERPARAGRAPHLINE]</span>]]>
 </footerparagraphline>
 </xml>
 
