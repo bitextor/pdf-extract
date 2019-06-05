@@ -1,14 +1,22 @@
 import com.java.app.PDFExtract;
 import com.java.classes.Common;
 
+/**
+ * @author      Anonymous
+ * @version     1.0
+ * @since       1.0
+ */
 public class Main {
 	public static void main(String[] args) {
 		try{
 
-			Common common = new Common();
+			Common common = new Common(); 
 
 			if (args == null || args.length == 0 || args[0].equals("--help")) {
-				
+
+				/**
+				 * Print out help 
+				 */
 				common.printHelp();
 				System.exit(0);
 				
@@ -16,7 +24,10 @@ public class Main {
 
 			String input = "", output = "", batchfile = "", options = "", logpath = "", rulepath = "", threadcount = "", language = "", debug = "";
 			String key = "";
-
+			
+			/**
+			 * Get command-line arguments
+			 */
 			for (String parm : args) {
 				
 				if (parm.startsWith("-")) {
@@ -48,7 +59,9 @@ public class Main {
 			}
 
 			if (!common.IsEmpty(input) && !common.IsEmpty(output)) {
-				
+				/**
+				 * Call function to extract single PDF file
+				 */
 				try {
 					PDFExtract oExtractor = new PDFExtract(logpath);
 					oExtractor.Extract(input, output, rulepath, language, options, common.getInt(debug));
@@ -57,7 +70,9 @@ public class Main {
 				}
 				
 			}else if (!common.IsEmpty(batchfile)) {
-
+				/**
+				 * Call function to extract PDF with batch file
+				 */
 				try {
 					PDFExtract oExtractor = new PDFExtract(logpath);
 					oExtractor.Extract(batchfile, rulepath, common.getInt(threadcount), language, options, common.getInt(debug));
@@ -66,7 +81,9 @@ public class Main {
 				}
 				
 			}else {
-				
+				/**
+				 * Print out help 
+				 */
 				common.printHelp();
 				
 				System.out.println("Cannot start extract: Invalid parameters.");
