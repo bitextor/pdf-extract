@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -23,14 +24,16 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.script.Invocable;
-import javax.script.ScriptException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.fit.pdfdom.PDFToHTML;
+import org.fit.pdfdom.PDFDomTree;
+import org.fit.pdfdom.PDFDomTreeConfig;
+import org.fit.pdfdom.resource.HtmlResourceHandler;
+import org.fit.pdfdom.resource.IgnoreResourceHandler;
 import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -42,133 +45,166 @@ import com.java.classes.HTMLObject.BolderObject;
 
 import ch.qos.logback.classic.Level;
 
+/**
+ * @author      Anonymous
+ * @version     1.0
+ * @since       1.0
+ */
 public class PDFExtract {
-	//
-	private final boolean isRunable = true;
-	//
+	/**
+	 * Set for build with runnable or not
+	 */
+	private final boolean runnable = true;
+	
 	private String logPath = "";
 	private String customScript = "";
 	private String pdfLanguage = "";
-	//
-	private boolean bLog = true;
-	private boolean jsEngineFail = false;
-	private boolean isBatch = false;
-    //
-	private Object _lockerExtract = new Object();
-    //
+	private boolean writeLogFile = true;
+	private boolean loadEngineFail = false;
+	private boolean batchMode = false;
+	private Object lockerExtract = new Object();
 	private int debugMode = 1;
-	private int iCountThreadExtract = 0;
-    //
-	private Thread tExtract = null;
-	private Invocable jsEngine = null;
+	private int countThreadExtract = 0;
+	private Thread threadExtract = null;
+	private Invocable scriptEngine = null;
 	private List<String> failFunctionList = new ArrayList<String>();
-	//
-	private Common common = new Common();
-	//
-    private Pattern p = Pattern.compile("<div class=\"p\"");
-    private Pattern p1 = Pattern.compile("<div class=\"page\"");
-    private Pattern p2 = Pattern.compile("<div class=\"r\"");
-    private Pattern p3 = Pattern.compile("<img.*");
-    //
-    private static final String REGEX_T = ".*top:([\\-\\+0-9]+.[0-9]+).*";
-    private static final String REGEX_L = ".*left:([\\-\\+0-9]+.[0-9]+).*";
-    private static final String REGEX_H = ".*height:([\\-\\+0-9]+.[0-9]+).*";
-    private static final String REGEX_W = ".*width:([\\-\\+0-9]+.[0-9]+).*";
-    private static final String REGEX_FS = ".*font-size:([\\-\\+0-9]+.[0-9]+).*";
-    private static final String REGEX_FF = ".*font-family:([a-zA-Z\\s\\-]+).*";
+    private Pattern patternP = Pattern.compile("<div class=\"p\"");
+    private Pattern patternPage = Pattern.compile("<div class=\"page\"");
+    private Pattern patternBlankSpace = Pattern.compile("<div class=\"r\"");
+    private Pattern patternImage = Pattern.compile("<img.*");
+    private static final String REGEX_TOP = ".*top:([\\-\\+0-9]+.[0-9]+).*";
+    private static final String REGEX_LEFT = ".*left:([\\-\\+0-9]+.[0-9]+).*";
+    private static final String REGEX_HEIGHT = ".*height:([\\-\\+0-9]+.[0-9]+).*";
+    private static final String REGEX_WIDTH = ".*width:([\\-\\+0-9]+.[0-9]+).*";
+    private static final String REGEX_FONTSIZE = ".*font-size:([\\-\\+0-9]+.[0-9]+).*";
+    private static final String REGEX_FONTFAMILY = ".*font-family:([a-zA-Z\\s\\-]+).*";
     private static final String REGEX_WORD = ".*>(.*?)<.*";
     private static final String REGEX_COLOR = "(.*color:)(#[a-z]+)(;.*)$";
     private static final String REGEX_SIZE = "(.*font-size:)([0-9.]+)(pt.*)$";
     private static final String REGEX_RESIZE = "(.*font-size:)([0-9.]+)(pt.*)$";
-    private static final String REGEX_WS = ".*word-spacing:([\\-\\+0-9]+.[0-9]+).*";
-    //
-	
-	public PDFExtract() throws Exception {
+    private static final String REGEX_WORDSPACING = ".*word-spacing:([\\-\\+0-9]+.[0-9]+).*";
+	private Common common = new Common();
+
+	private void initial(String logFilePath) {
 		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
 		rootLogger.setLevel(Level.toLevel("off"));
-		
-		bLog = false;
-	}
-	public PDFExtract(String logpath) throws Exception {
-		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-		rootLogger.setLevel(Level.toLevel("off"));
-		
-		if (common.IsEmpty(logpath)) {
-			bLog = false;
+
+		if (common.IsEmpty(logFilePath)) {
+			writeLogFile = false;
 		}else {
-			bLog = true;
+			writeLogFile = true;
 			
-			if (common.IsEmpty(common.getExtension(logpath))){
-				logpath += ".log";
+			if (common.IsEmpty(common.getExtension(logFilePath))){
+				logFilePath += ".writeLogFile";
 			}
 			
-			logPath = logpath;
+			logPath = logFilePath;
 
-			if (isRunable) common.print("Log File: " + logPath);
+			if (runnable) common.print("Log File: " + logPath);
 		}
+
 	}
 	
-	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options) throws Exception {
-		Extract(inputFile, outputFile, rulePath, language, options, 0);
+    /**
+   	Initializes a newly created PDFExtract object.
+    @throws Exception
+    */
+	public PDFExtract() throws Exception {
+		initial("");
 	}
+	
+	/**
+   	Initializes a newly created PDFExtract object.
+    @param logFilePath The path to write the log file to.
+    @throws Exception
+    */
+	public PDFExtract(String logFilePath) throws Exception {
+		initial(logFilePath);
+	}
+	
+	/**
+	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources.
+	 *
+	 * @param inputFile	 The path to the source PDF file process for extraction
+	 * @param outputFile The path to the output HTML file after extraction
+	 * @param rulePath   The path of a custom set of rules to process joins between lines. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
+	 * @param options    The control parameters
+	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+	 * @since            1.0
+	 */
 	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options, int debug) throws Exception {
 		
 		try {
-			if (bLog) {
-				if (isRunable) common.print(inputFile, "Start extract");
+			if (writeLogFile) {
+				if (runnable) common.print(inputFile, "Start extract");
 				common.writeLog(logPath, inputFile, "Start extract", false);
 			}else {
 				common.print(inputFile, "Start extract");
 			}
 			
-			//--- Validate parameters
-			//- Check input file exist
+			/**
+			 * Check input file exists
+			 */
 			if (!common.IsExist(inputFile)) {
 				throw new Exception("Input file does not exist.");
 			}
 			
-			//- Check input file extension
+			/**
+			 * Check input file extension
+			 */
 			if (!common.getExtension(inputFile).toLowerCase().equals("pdf")) {
 				throw new Exception("Input file extension is not pdf.");
 			}
-			//--- End Validate parameters
 
-			//
-			if (isRunable) {
+			if (runnable) {
+				/**
+				 * Check input file permission
+				 */
 				common.checkPermissions(inputFile);
 			}
-			if (!isBatch) {
+			
+			if (!batchMode) {
 				pdfLanguage = language;
 				debugMode = debug;
 			}
-			//
 
-			//
-			String inputName = common.getBaseName(inputFile);
+			/**
+			 * Get output file name without extension
+			 */
 			String outputName = common.getBaseName(outputFile);
+			
+			/**
+			 * Get output file extension
+			 */
 			String outputExt = common.getExtension(outputFile);
+
+			/**
+			 * Get output directory from outputFile and create it if not exists
+			 */
 			String outputPath = common.getParentPath(outputFile);
 			if (!common.IsEmpty(outputPath) && !common.IsExist(outputPath)) {
 				common.createDir(outputPath);
 			}
-			//
 
-			//read custom script
-			//--- Get custom rule script
-            synchronized (_lockerExtract) { 
+			/**
+			 * Read rule script and load into object
+			 */
+            synchronized (lockerExtract) { 
             	customScript = common.getCustomScript(rulePath, customScript);
             }
-			
-			if (common.IsNull(jsEngine) && !common.IsEmpty(customScript) && !jsEngineFail) {
-				synchronized (_lockerExtract) {
-					if (jsEngine == null && !jsEngineFail) {
-						jsEngine = common.getJSEngine(customScript);
-						if (jsEngine == null) jsEngineFail = true;
+			if (common.IsNull(scriptEngine) && !common.IsEmpty(customScript) && !loadEngineFail) {
+				synchronized (lockerExtract) {
+					if (scriptEngine == null && !loadEngineFail) {
+						scriptEngine = common.getJSEngine(customScript);
+						if (scriptEngine == null) loadEngineFail = true;
 					}
 				}
 			}
-            
-			//--- Call PDF -> HTML process
+
+			/**
+			 * Call function to convert PDF to HTML
+			 */
 			String outputHtml = outputName + ".org." + outputExt;
 			if (!common.IsEmpty(outputPath)) {
 				outputHtml = common.combine(outputPath, outputHtml);
@@ -176,62 +212,58 @@ public class PDFExtract {
 			try {
 				convertPdfToHtml(inputFile, outputHtml);
 			}catch(Exception e) {
-				//System.out.println("Error: PDFToHTML: " + e.getMessage());
-				throw new Exception("Convert pdf to html fail.: " + e.getMessage());
+				throw e;
 			}
-            //
-			
-			//--- Call HTML -> HTML with Box process
+            
+			/**
+			 * Call function to paint html box
+			 */
 			String inputHtmlBox = outputHtml;
 			String outputHtmlBox = outputName + ".box." + outputExt;
 			if (!common.IsEmpty(outputPath)) {
 				outputHtmlBox = common.combine(outputPath, outputHtmlBox);
 			}
-			
             try {
-        		read2map(inputHtmlBox, outputHtmlBox);	
+        		paintHtmlBox(inputHtmlBox, outputHtmlBox);	
             }catch(Exception e) {
-				throw new Exception("Read2map fail.: " + e.getMessage());
+				throw new Exception("paintHtmlBox fail.: " + e.getMessage());
             }
-	        //
-
-			//
 			common.deleteFile(inputHtmlBox);
-			//--- End Normalize HTML process
 
+			
             if (debugMode == 1) {
 
-    			//--- Write output
+    			/**
+    			 * If debugMode is 1, will write the html box version to output  
+    			 */
     			common.moveFile(outputHtmlBox, outputFile);
-    			//--- End Write output
 
             }else {
     			
-    			//--- Call Normalize HTML process
+    			/**
+    			 * Call function to normalize html  
+    			 */
     			String inputNormalize = outputHtmlBox;
     			String outputNormalize = outputName + ".normalized." + outputExt;
     			if (!common.IsEmpty(outputPath)) {
     				outputNormalize = common.combine(outputPath, outputNormalize);
     			}
-
                 try {
                 	Normalize(inputNormalize, outputNormalize);
                 }catch(Exception e) {
     				throw new Exception("Normalize fail.: " + e.getMessage());
                 }
-    			//
     			common.deleteFile(inputNormalize);
-    			//--- End Normalize HTML process
-
     			
-    			//--- Write output
+    			/**
+    			 * Write to output file.  
+    			 */
     			common.moveFile(outputNormalize, outputFile);
-    			//--- End Write output
 
             }
 
-			if (bLog) {
-				if (isRunable) common.print(inputFile, "Extract success. -> " + outputFile + "");
+			if (writeLogFile) {
+				if (runnable) common.print(inputFile, "Extract success. -> " + outputFile + "");
 				common.writeLog(logPath, inputFile, "Extract success. -> " + outputFile + "", false);
 			}else {
 				common.print(inputFile, "Extract success. -> " + outputFile + "");
@@ -239,127 +271,148 @@ public class PDFExtract {
 			
 		}catch(Exception e) {
 			String message = e.getMessage();
-			if (bLog) {
+			if (writeLogFile) {
 				common.writeLog(logPath, inputFile, "Error: " + message, true);
 			}else {
-				if (!isRunable) common.print(inputFile, "Error: " + message);
+				if (!runnable) common.print(inputFile, "Error: " + message);
 			}
 
 			throw e;
 		}finally {
-			if (isBatch) {
-	            synchronized (_lockerExtract) { iCountThreadExtract--; }
+			if (batchMode) {
+	            synchronized (lockerExtract) { countThreadExtract--; }
 			}
 		}
 
 	}
 
-	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options) throws Exception {
-		Extract(batchFile, rulePath, threadCount, language, options, 0);
-	}
+	/**
+	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources.
+	 *
+	 * @param batchFile	 The path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
+	 * @param rulePath   The path of a custom set of rules to process joins between lines. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+	 * @param threadCount The number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then the default valur of 1 thread is used.
+	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
+	 * @param options    The control parameters
+	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+	 * @since            1.0
+	 */
 	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug) throws Exception {
 		try {
-			isBatch = true;
+			batchMode = true;
 			
-			if (bLog) {
-				if (isRunable) common.print("Start extract batch file: " + batchFile);
+			if (writeLogFile) {
+				if (runnable) common.print("Start extract batch file: " + batchFile);
 				common.writeLog(logPath, "Start extract batch file: " + batchFile);
 			}else {
 				common.print("Start extract batch file: " + batchFile);
 			}
-			
-			//--- Validate parameters
-			//- check input file exist
+
+			/**
+			 * Check input file exists
+			 */
 			if (!common.IsExist(batchFile)) {
 				throw new Exception("Input batch file does not exist.");
 			}
 
-			//read custom script
-			//--- Get custom rule script
+			/**
+			 * Read rule script and load into object
+			 */
 			if (common.IsEmpty(customScript)) {
 				customScript = common.getCustomScript(rulePath, customScript);
 			}
-			
 			if (!common.IsEmpty(customScript)) {
-				jsEngine = common.getJSEngine(customScript);
-				if (jsEngine == null) jsEngineFail = true;
+				scriptEngine = common.getJSEngine(customScript);
+				if (scriptEngine == null) loadEngineFail = true;
 			}
-			//--- End Validate parameters
 
-			//
 			pdfLanguage = language;
 			debugMode = debug;
 			if (threadCount == 0) threadCount = 1;
-	        int iMaxThread = threadCount;
-			//
-			
-			List<String> lines = common.readLines(batchFile);
+	        int maxThreadCount = threadCount;
+
+			/**
+			 * Read batch file
+			 */	
+	        List<String> lines = common.readLines(batchFile);
 			
 			int ind = 0, len = lines.size();
 			while (ind < len) {
 				
-				if (iCountThreadExtract < iMaxThread) {
+				if (countThreadExtract < maxThreadCount) {
 					String line = lines.get(ind);
 					
-					AddThreadExtract(ind, line, rulePath, language, options);
+					AddThreadExtract(ind, line, rulePath, language, options, debug);
 
 					ind++;
 				}
 				
-				Thread.sleep(10);
+				Thread.sleep(100);
 			}
 
-			while (iCountThreadExtract > 0) {
-				Thread.sleep(10);
+			/**
+			 * Wait for all thread finish
+			 */	
+			while (countThreadExtract > 0) {
+				Thread.sleep(100);
 			}
 			
 		}catch(Exception e) {
 			String message = e.getMessage();
-			if (bLog) {
+			if (writeLogFile) {
 				common.writeLog(logPath, message, true);
 			}else {
-				if (!isRunable) common.print("Error: " + e.getMessage());
+				if (!runnable) common.print("Error: " + e.getMessage());
 			}
 			throw e;
 		}finally {
-			if (bLog) {
-				if (isRunable) common.print("Finish extract batch file: " + batchFile);
+			if (writeLogFile) {
+				if (runnable) common.print("Finish extract batch file: " + batchFile);
 				common.writeLog(logPath, "Finish extract batch file: " + batchFile);
 			}else {
 				common.print("Finish extract batch file: " + batchFile);
 			}
 		}
 	}
-	
-    private void AddThreadExtract(int index, String line, String rulePath, String language, String options)
+
+	/**
+	 * Add new thread pdf extract
+	 *
+	 * @since 1.0
+	 */
+    private void AddThreadExtract(int index, String line, String rulePath, String language, String options, int debug)
     {
         try
         {
-            String sThreadName = "ext-" + index;
+            String threadName = "ext-" + index;
             
-            synchronized (_lockerExtract) { iCountThreadExtract++; }
-            tExtract = new Thread(sThreadName) {
+            synchronized (lockerExtract) { countThreadExtract++; }
+            threadExtract = new Thread(threadName) {
     			public void run() {
 
     				String inputFile = "", outputFile = "";
     				try {
-	    				//--- Validate line
+    					
+    					/**
+    					 * Validate line to process
+    					 */	
 	    				String[] cols = line.split("\t");
 	    				
 	    				if (cols == null || cols.length < 2) {
 	    					throw new Exception("Invalid batch line: " + line);
 	    				}
-	    				//--- End Validate line
-	    				
 	    				inputFile = cols[0];
 	    				outputFile = cols[1];
-	    				
-	    				Extract(inputFile, outputFile, rulePath, language, options);
+
+    					/**
+    					 * Call function to extract
+    					 */	
+	    				Extract(inputFile, outputFile, rulePath, language, options, debug);
 
     				}catch(Exception e) {
     					String message = e.getMessage();
-    					if (bLog) {
-    						if (isRunable) common.print(inputFile, "Error: " + message);
+    					if (writeLogFile) {
+    						if (runnable) common.print(inputFile, "Error: " + message);
     						common.writeLog(logPath, inputFile, "Error: " + message, true);
     					}else {
     						common.print(inputFile, "Error: " + message);
@@ -368,15 +421,15 @@ public class PDFExtract {
     				}
     			}
     		};
-    		tExtract.start();
+    		threadExtract.start();
 
         }
         catch (Exception ex)
         {
-            synchronized (_lockerExtract) { iCountThreadExtract--; }
+            synchronized (lockerExtract) { countThreadExtract--; }
 			String message = ex.toString();
-			if (bLog) {
-				if (isRunable) common.print("Batch line: " + line + ", Error: " + message);
+			if (writeLogFile) {
+				if (runnable) common.print("Batch line: " + line + ", Error: " + message);
 				common.writeLog(logPath, "Batch line: " + line + ", Error: " + message, true);
 			}else {
 				common.print("Batch line: " + line + ", Error: " + message);
@@ -385,14 +438,23 @@ public class PDFExtract {
     }
     
 
-    //-----------------------------------------------
-    // convertPdfToHtml
-    //-----------------------------------------------
+	/**
+	 * Convert PDF to HTML file
+	 *
+	 * @since 1.0
+	 */
     private void convertPdfToHtml(String inputFile, String outputFile) throws Exception {
     	PDDocument pdf = null;
 		Writer output = null;
 		try {
-			PDFToHTML.run(new String[] { inputFile, outputFile, "-im=IGNORE" });
+            //loads the PDF file, parse it and gets html file
+            pdf = PDDocument.load(new java.io.File(inputFile));
+            HtmlResourceHandler handler  = new IgnoreResourceHandler();
+            PDFDomTreeConfig config = PDFDomTreeConfig.createDefaultConfig();
+            config.setImageHandler(handler);
+            PDFDomTree parser = new PDFDomTree(config);
+            output = new PrintWriter(outputFile, "utf-8");
+            parser.writeText(pdf, output);
 		}catch(Exception e) {
 			throw new Exception("Convert pdf to html fail.: " + e.getMessage());
 		}finally {
@@ -401,10 +463,12 @@ public class PDFExtract {
 		}
     }
     
-    //-----------------------------------------------
-    // read2map
-    //-----------------------------------------------
-    private void read2map(String inputFile, String outputFile) throws Exception {
+	/**
+	 * Paint HTML box
+	 *
+	 * @since 1.0
+	 */
+    private void paintHtmlBox(String inputFile, String outputFile) throws Exception {
         BufferedReader b_in = null;
         HashMap<Integer, List<HtmlTagValues>> hList = new HashMap<Integer, List<HtmlTagValues>>();
         int hPage = -1;
@@ -420,21 +484,21 @@ public class PDFExtract {
 	            double maxFont = 0;
 	            double maxTop = 0;
 	            double maxLeft = 0;
-	            Matcher m = this.p.matcher(line);
-	            Matcher m1 = this.p1.matcher(line);
+	            Matcher m = this.patternP.matcher(line);
+	            Matcher m1 = this.patternPage.matcher(line);
 	
 	            if (m.find()) {
 	
 	                HtmlTagValues v = new HtmlTagValues();
 	
-	                v.Top = line.replaceAll(REGEX_T, "$1");
-	                v.Left = line.replaceAll(REGEX_L, "$1");
-	                v.Height = line.replaceAll(REGEX_H, "$1");
-	                v.Width = line.replaceAll(REGEX_W, "$1");
-	                v.FontFamily = line.replaceAll(REGEX_FF, "$1");
-	                v.FontSize = line.replaceAll(REGEX_FS, "$1");
+	                v.Top = line.replaceAll(REGEX_TOP, "$1");
+	                v.Left = line.replaceAll(REGEX_LEFT, "$1");
+	                v.Height = line.replaceAll(REGEX_HEIGHT, "$1");
+	                v.Width = line.replaceAll(REGEX_WIDTH, "$1");
+	                v.FontFamily = line.replaceAll(REGEX_FONTFAMILY, "$1");
+	                v.FontSize = line.replaceAll(REGEX_FONTSIZE, "$1");
 	                v.Word = line.replaceAll(REGEX_WORD, "$1");
-	                v.WordSpacing = line.replaceAll(REGEX_WS, "$1");
+	                v.WordSpacing = line.replaceAll(REGEX_WORDSPACING, "$1");
 	                if (maxTop < Double.valueOf(v.Top)) {
 	                    v.maxTop = v.Top;
 	                }
@@ -457,8 +521,8 @@ public class PDFExtract {
 	            	hPage++;
 	            	hList.put(hPage, new ArrayList<HtmlTagValues>());
 
-	            	pageWidth = Double.valueOf(line.replaceAll(REGEX_W, "$1"));
-	                pageHeight = Double.valueOf(line.replaceAll(REGEX_H, "$1"));
+	            	pageWidth = Double.valueOf(line.replaceAll(REGEX_WIDTH, "$1"));
+	                pageHeight = Double.valueOf(line.replaceAll(REGEX_HEIGHT, "$1"));
 	            }
 	        }
         }finally {
@@ -469,8 +533,8 @@ public class PDFExtract {
         }
         
         try{
-        	LinkedHashMap<Integer, ArrayList<String>> model = drawingBOX(hList);
-	        drawing(inputFile, outputFile, model);
+        	LinkedHashMap<Integer, ArrayList<String>> model = getBox(hList);
+        	drawBox(inputFile, outputFile, model);
         }catch(Exception e) {
         	e.printStackTrace();
         	throw new Exception("error drawing: " + e.getMessage());
@@ -478,6 +542,11 @@ public class PDFExtract {
 
     }
 
+	/**
+	 * HTML Tag Values
+	 *
+	 * @since 1.0
+	 */
     private class HtmlTagValues {
 
         public String Top;
@@ -487,7 +556,6 @@ public class PDFExtract {
         public String FontFamily;
         public String FontSize;
         public String Word;
-        public int nPage;
         public String id;
         public String maxFont;
         public String maxTop;
@@ -495,24 +563,21 @@ public class PDFExtract {
         public String WordSpacing;
     }
 
-    //-----------------------------------------------
-    // drawing
-    //-----------------------------------------------
-
     private boolean checkLineAdd(double pageWidth, double pageHeight, String line) {
         HtmlTagValues v = new HtmlTagValues();
     	
-        v.Top = line.replaceAll(REGEX_T, "$1");
-        v.Left = line.replaceAll(REGEX_L, "$1");
-        v.Height = line.replaceAll(REGEX_H, "$1");
-        v.Width = line.replaceAll(REGEX_W, "$1");
-        v.FontFamily = line.replaceAll(REGEX_FF, "$1");
-        v.FontSize = line.replaceAll(REGEX_FS, "$1");
+        v.Top = line.replaceAll(REGEX_TOP, "$1");
+        v.Left = line.replaceAll(REGEX_LEFT, "$1");
+        v.Height = line.replaceAll(REGEX_HEIGHT, "$1");
+        v.Width = line.replaceAll(REGEX_WIDTH, "$1");
+        v.FontFamily = line.replaceAll(REGEX_FONTFAMILY, "$1");
+        v.FontSize = line.replaceAll(REGEX_FONTSIZE, "$1");
         v.Word = line.replaceAll(REGEX_WORD, "$1");
-        v.WordSpacing = line.replaceAll(REGEX_WS, "$1");
+        v.WordSpacing = line.replaceAll(REGEX_WORDSPACING, "$1");
 
         return checkLineAdd(pageWidth, pageHeight, v);
     }
+    
     private boolean checkLineAdd(double pageWidth, double pageHeight, HtmlTagValues v) {
 
         if (Double.valueOf(v.Left) < 0 || Double.valueOf(v.Top) < 0 || Double.valueOf(v.Left) > pageWidth || Double.valueOf(v.Top) > pageHeight) {
@@ -521,14 +586,20 @@ public class PDFExtract {
         	return true;	
         }
     }
-    private void drawing(String input, String outputnamefile, LinkedHashMap<Integer, ArrayList<String>> model) throws IOException {
+
+	/**
+	 * Draw box to html 
+	 *
+	 * @since 1.0
+	 */
+    private void drawBox(String inputFile, String outputFile, LinkedHashMap<Integer, ArrayList<String>> model) throws IOException {
 
     	BufferedReader b_in = null;
     	BufferedWriter b_out = null;
     	try {
-	        InputStreamReader i_in = new InputStreamReader(new FileInputStream(input), StandardCharsets.UTF_8);
+	        InputStreamReader i_in = new InputStreamReader(new FileInputStream(inputFile), StandardCharsets.UTF_8);
 	        b_in = new BufferedReader(i_in);
-	        FileOutputStream f_out = new FileOutputStream(outputnamefile);
+	        FileOutputStream f_out = new FileOutputStream(outputFile);
 	        OutputStreamWriter o_out = new OutputStreamWriter(f_out, StandardCharsets.UTF_8);
 	        b_out = new BufferedWriter(o_out);
 
@@ -538,10 +609,10 @@ public class PDFExtract {
 	        int wordIterator = 1;
 	        String line;
 	        while ((line = b_in.readLine()) != null) {
-	            Matcher m = this.p.matcher(line);
-	            Matcher m1 = this.p1.matcher(line);
-	            Matcher m2 = this.p2.matcher(line);
-	            Matcher m3 = this.p3.matcher(line);
+	            Matcher m = this.patternP.matcher(line);
+	            Matcher m1 = this.patternPage.matcher(line);
+	            Matcher m2 = this.patternBlankSpace.matcher(line);
+	            Matcher m3 = this.patternImage.matcher(line);
 	
 	            if (m2.find() || m3.find()) {
 	                line = line.replaceAll(".*src.*>", "");
@@ -554,8 +625,8 @@ public class PDFExtract {
 	                    }
 	                    nPage++;
 	                }
-	                pageWidth = Double.valueOf(line.replaceAll(REGEX_W, "$1"));
-	                pageHeight = Double.valueOf(line.replaceAll(REGEX_H, "$1"));
+	                pageWidth = Double.valueOf(line.replaceAll(REGEX_WIDTH, "$1"));
+	                pageHeight = Double.valueOf(line.replaceAll(REGEX_HEIGHT, "$1"));
 	            } else if (m.find()) {
 	                if (checkLineAdd(pageWidth, pageHeight, line)) {
 		                double percent = 0.11;
@@ -564,11 +635,9 @@ public class PDFExtract {
 		                double calSIZE = a - (a * percent);
 		                if (wordIterator == 1) {
 		                    line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3");
-		                    //line = line.replaceAll(REGEX_TEXT, "$1background-color:cyan;$2");
 		                    wordIterator = 0;
 		                } else {
-		                    line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3");
-		                    //line = line.replaceAll(REGEX_TEXT, "$1background-color:silver;$2"); 
+		                    line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3"); 
 		                    wordIterator = 1;
 		                }
 		                line = line.replaceAll(REGEX_COLOR, "$1" + "#000000" + "$3");
@@ -593,10 +662,12 @@ public class PDFExtract {
     	}
     }
 
-    //-----------------------------------------------
-    // drawingBOX
-    //-----------------------------------------------
-    private LinkedHashMap<Integer, ArrayList<String>> drawingBOX(HashMap<Integer, List<HtmlTagValues>> hList) {
+	/**
+	 * Get box to draw 
+	 *
+	 * @since 1.0
+	 */
+    private LinkedHashMap<Integer, ArrayList<String>> getBox(HashMap<Integer, List<HtmlTagValues>> hList) {
 
         int BOX = 1;
         double columnTop = 0;
@@ -853,16 +924,18 @@ public class PDFExtract {
         return DIV;
     }
 
-    //-----------------------------------------------
-    // Normalize
-    //-----------------------------------------------
-    private void Normalize(String sInputPath, String sOutputPath) throws Exception
+	/**
+	 * Normalize html
+	 *
+	 * @since 1.0
+	 */
+    private void Normalize(String inputFile, String outputFile) throws Exception
 	{
 		FileInputStream fs = null;	
 		BufferedReader br = null;
 		try {
 
-			fs = new FileInputStream(sInputPath);
+			fs = new FileInputStream(inputFile);
 			br = new BufferedReader(new InputStreamReader(fs, "UTF-8"));
 			StringBuilder sbPageAll = new StringBuilder();
 			StringBuilder sbContentPage = new StringBuilder();
@@ -899,10 +972,9 @@ public class PDFExtract {
 					break;
 				}
 			}
-			 
-			//Get classes
-			/*
-			 - page - the wrapping boundary of a page. 
+			
+			/** Get classes
+			- page - the wrapping boundary of a page. 
 			- header - the wrapping boundary of the page header.
 			- footer - the wrapping boundary of the page footer.
 			- column - the wrapping boundary of a column.
@@ -915,7 +987,7 @@ public class PDFExtract {
 			sbPageAllNomalize.set(sbPageAll);
 			String sClasses = GetNormalizeClasses(hashClasses.get(),sbPageAllNomalize);
 
-		    FileUtils.writeStringToFile(new File(sOutputPath),
+		    FileUtils.writeStringToFile(new File(outputFile),
 		    		GetTemplate(Tempate.body.toString())
 		    		.replace("[" + TempateContent.STYLE.toString() + "]",sClasses)
 		    		.replace("[" + TempateContent.BODY.toString() + "]",sbPageAllNomalize.get().toString())
@@ -935,6 +1007,12 @@ public class PDFExtract {
 			}
 		}
 	}
+
+	/**
+	 * Get normalize classes
+	 *
+	 * @since 1.0
+	 */
 	private String GetNormalizeClasses(Hashtable<String,Integer> hashClasses,AtomicReference<StringBuilder> sbPageAll)
 	{
 		StringBuilder _sbPageAll = sbPageAll.get();
@@ -944,7 +1022,6 @@ public class PDFExtract {
 
 		String sGlobalStyle = "";
 		int iGlobalStyle = 0;
-		String REGEX_FS = ".*font-size:([\\-\\+0-9]+.[0-9]+).*";
 		List<String> listClasse = new ArrayList<String>(hashClasses.keySet());	
 		for (String classes : listClasse) {
 			if (hashClasses.get(classes) > iGlobalStyle)
@@ -957,7 +1034,7 @@ public class PDFExtract {
 		for (String classes : listClasse) {
 			if (!sGlobalStyle.equals(classes))
 			{
-				float fFountSize = Float.parseFloat(classes.replaceAll(REGEX_FS, "$1"));
+				float fFountSize = Float.parseFloat(classes.replaceAll(REGEX_FONTSIZE, "$1"));
 				for (int i = 0; i < 10; i++) {
 					if (hashFontSize.containsKey(fFountSize))
 					{
@@ -967,7 +1044,6 @@ public class PDFExtract {
 						break;
 				}
 				hashFontSize.put(fFountSize, classes);
-				//System.out.println(classes);
 			}
 		}
 		//(font\-family\:CAAAAA\+DejaVuSans\-Bold;font\-size:12\.46pt;font\-weight:bold;)
@@ -1017,6 +1093,12 @@ public class PDFExtract {
 		
 		return sbClasses.toString();		
 	}
+
+	/**
+	 * Get page normalize html
+	 *
+	 * @since 1.0
+	 */
 	private String  GetPageNormalizedHtml (String sContent,int iPageID,AtomicReference<Hashtable<String,Integer>> hashClasses)
 	{
 		String sPageNormalized = "";
@@ -1051,7 +1133,7 @@ public class PDFExtract {
 				hashLine.put(new Key(oBolder.top,oBolder.left), oBolder);
 		}	
 		
-		//Case not handle paragrapBorder 
+		//Case not handle paragraphBorder 
 		if (hashParagraph.size() == 0)
 		{
 			hashParagraph = (Hashtable<Key, BolderObject>) hashColumn.clone();
@@ -1081,14 +1163,6 @@ public class PDFExtract {
 			String sletterspacing = "";
 			if (mText.group("letterspacing") != null)
 				sletterspacing = mText.group("letterspacing");
-			/*
-			String swordspacing = "";
-			if (mText.group("wordspacing") != null)
-				swordspacing = mText.group("wordspacing");
-			String scolor = "";
-			if (mText.group("color") != null)
-				scolor = mText.group("color");
-			*/
 			oText.width = Float.parseFloat(mText.group("width"));
 			oText.text = mText.group("text");
 			
@@ -1101,7 +1175,6 @@ public class PDFExtract {
 				sFontStyle += "font-style:" + sfontstyle + ";";
 		
 			oText.style = sFontStyle.replaceAll("(letter\\-spacing:(.*?)pt;)", "");
-			
 
 			
 			if (hashText.containsKey(oText.top))
@@ -1137,7 +1210,7 @@ public class PDFExtract {
 	    	List<Key> listParagraphTop = new ArrayList<Key>(hashParagraph.keySet());
 			Collections.sort(listParagraphTop, new KeyComparator());
 		    
-		  //Loop each paragraph in column
+			//Loop each paragraph in column
 		    for (Key paragraphKey : listParagraphTop) {
 		    	
 		    	String sColumnParagraphLineAll = "";
@@ -1146,13 +1219,11 @@ public class PDFExtract {
 		    			&& oBolderParagraph.left >= oBolderColumn.left && oBolderParagraph.right <= oBolderColumn.right)
 		    	{
 
-			    	//System.out.println(columnKey.x + ":"+columnKey.y);
-			    	
 			    	List<Key> listLineTop = new ArrayList<Key>(hashLine.keySet());
 				    Collections.sort(listLineTop, new KeyComparator());
 				    int iLineID = 1;
 
-				  //Loop each line in paragraph
+				    //Loop each line in paragraph
 				    for (Key lineKey : listLineTop) {
 					    
 				    	HTMLObject.BolderObject oBolderLine = hashLine.get(lineKey);
@@ -1201,10 +1272,10 @@ public class PDFExtract {
 						    		.replace("[" + TempateStyle.LINESTYLE.toString() + "]" , sStyle)
 						    		.replace("[" + TempateContent.COLUMNPARAGRAPHLINE.toString() + "]" , sLine);
 						    
-						    //Analyze Joins 
-						    if (jsEngine != null && sColumnParagraphLine.length() > 0) {
+						    //call rapairObjectSequence
+						    if (scriptEngine != null && sColumnParagraphLine.length() > 0) {
 
-				    			String sResult = common.getStr(AnalyzeJoins("repaidObjectSequence", sColumnParagraphLine));
+				    			String sResult = common.getStr(invokeJS("repairObjectSequence", sColumnParagraphLine));
 				    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 				    			{
 				    				sColumnParagraphLine = sResult;
@@ -1218,24 +1289,24 @@ public class PDFExtract {
 				    }
 				    				   
 				    
-				    if (jsEngine != null && sColumnParagraphLineAll.length() > 0) {
+				    if (scriptEngine != null && sColumnParagraphLineAll.length() > 0) {
 	    	
 				    	//call analyzeJoins
-		    			String sResult = common.getStr(AnalyzeJoins("analyzeJoins", sColumnParagraphLineAll, pdfLanguage));
+		    			String sResult = common.getStr(invokeJS("analyzeJoins", sColumnParagraphLineAll, pdfLanguage));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
 		    			}	
 		    			
 		    			//call isHeader
-		    			sResult = common.getStr(AnalyzeJoins("isHeader", sColumnParagraphLineAll));
+		    			sResult = common.getStr(invokeJS("isHeader", sColumnParagraphLineAll));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
 		    			}	
 		    			
 		    			//call isFooter
-		    			sResult = common.getStr(AnalyzeJoins("isFooter", sColumnParagraphLineAll));
+		    			sResult = common.getStr(invokeJS("isFooter", sColumnParagraphLineAll));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
@@ -1270,11 +1341,17 @@ public class PDFExtract {
 	    
 		return sPageNormalized;
 	}
-	public Object invokeJS(String function, Object... args) throws NoSuchMethodException, ScriptException {
+
+	/**
+	 * Invoke JS function
+	 *
+	 * @since 1.0
+	 */
+	private Object invokeJS(String function, Object... args) {
 		Object result = null;
-        if (jsEngine != null && !failFunctionList.contains(function)) {
+        if (scriptEngine != null && !failFunctionList.contains(function)) {
         	try {
-        		result = jsEngine.invokeFunction(function, args);
+        		result = scriptEngine.invokeFunction(function, args);
         	}catch(Exception e) {
         		if (!failFunctionList.contains(function)) {
         			failFunctionList.add(function);
@@ -1284,17 +1361,13 @@ public class PDFExtract {
         }
         return result;
 	}
-	private Object AnalyzeJoins(Object... args)
-	{
-		Object result = null;
-		try {
-			String function = "analyzeJoins";
-			result = invokeJS(function, args);
-		} catch (Exception e) {	
-			result = null;
-		}
-		return result;
-	}
+	
+
+	/**
+	 * Get template document
+	 *
+	 * @since 1.0
+	 */
 	private Document getDocument() {
 		Document doc = null;
 		try {
@@ -1308,6 +1381,12 @@ public class PDFExtract {
         }
 		return doc;
 	}
+
+	/**
+	 * Get template
+	 *
+	 * @since 1.0
+	 */
 	private String GetTemplate(String sTagName)
 	{
 		String sContent = "";
@@ -1322,6 +1401,11 @@ public class PDFExtract {
 		return sContent;
 	}
 
+	/**
+	 * Key class
+	 *
+	 * @since 1.0
+	 */
 	static class Key {
 
 		public final float x;
@@ -1348,6 +1432,12 @@ public class PDFExtract {
 	    }
 
 	}
+
+	/**
+	 * KeyComparator class
+	 *
+	 * @since 1.0
+	 */
 	class KeyComparator implements Comparator<Key> {
 
 	    @Override
@@ -1366,7 +1456,12 @@ public class PDFExtract {
 	    }
 
 	}
-	//Output template
+
+	/**
+	 * Output template enum
+	 *
+	 * @since 1.0
+	 */
 	enum Tempate {
 		body , 
 		page,
