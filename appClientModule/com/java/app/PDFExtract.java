@@ -499,6 +499,7 @@ public class PDFExtract {
 	                v.FontSize = line.replaceAll(REGEX_FONTSIZE, "$1");
 	                v.Word = line.replaceAll(REGEX_WORD, "$1");
 	                v.WordSpacing = line.replaceAll(REGEX_WORDSPACING, "$1");
+	                v.Color = line.replaceAll(REGEX_COLOR, "$1");
 	                if (maxTop < Double.valueOf(v.Top)) {
 	                    v.maxTop = v.Top;
 	                }
@@ -561,6 +562,7 @@ public class PDFExtract {
         public String maxTop;
         public String maxLeft;
         public String WordSpacing;
+        public String Color;
     }
 
     private boolean checkLineAdd(double pageWidth, double pageHeight, String line) {
@@ -574,6 +576,7 @@ public class PDFExtract {
         v.FontSize = line.replaceAll(REGEX_FONTSIZE, "$1");
         v.Word = line.replaceAll(REGEX_WORD, "$1");
         v.WordSpacing = line.replaceAll(REGEX_WORDSPACING, "$1");
+        v.Color = line.replaceAll(REGEX_COLOR, "$1");
 
         return checkLineAdd(pageWidth, pageHeight, v);
     }
@@ -781,7 +784,7 @@ public class PDFExtract {
                     	paraWidth = lineWidth;
                     	paraLeft = lineLeft;
                     } else {
-                    	paraWidth = Collections.max(objpara) + (Collections.max(objparaleft) - Collections.min(objparaleft));
+                    	paraWidth = Collections.max(objpara);
                     	paraLeft = Collections.min(objparaleft);
                     }
                     if (v_pre != null) {
@@ -796,6 +799,7 @@ public class PDFExtract {
 
                     if (v_para != null) {
                     	paraWidth = Collections.max(objpara);
+                    	paraWidth = Math.max(paraWidth, (lineLeft - Collections.min(objparaleft)) + lineWidth);
                     	if (paraWidth == 0.0) paraWidth = Double.valueOf(v_para.Width);
                     	paraHeight = Math.abs(Double.valueOf(v_para.Top) - Double.valueOf(v.Top)) + Double.valueOf(v.Height);
 	                    objm.add(getDIV(paraTop, paraLeft, paraHeight, paraWidth, "green"));
@@ -821,6 +825,7 @@ public class PDFExtract {
                     } else {
                         columnWidth = Collections.max(objline);
                         columnLeft = Collections.min(objlineleft);
+                        columnWidth = Math.max(columnWidth, (lineLeft - columnLeft) + lineWidth);
                     }
                     if (v_pre != null) {
                     	columnHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
@@ -828,11 +833,20 @@ public class PDFExtract {
                 }
                 
                 if ((nextTop > 0 && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+                		|| (v_next == null || (nextTop > lineHeight*5))
+                		|| (v_next == null || (nextTop > lineHeight  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.FontSize) > 20))
                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
+                		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
                 	) {
                 	
                     if (v_column != null) {
-                    	columnWidth = Collections.max(objline); // + (Collections.max(objlineleft) - Collections.min(objlineleft));
+                    	if (objline != null && objline.size() > 0) {
+                    		columnWidth = Collections.max(objline);	
+                    	}else {
+                    		columnWidth = lineWidth;
+                    	}
+                        columnWidth = Math.max(columnWidth, (lineLeft - columnLeft) + lineWidth);
                         columnHeight = Math.abs(Double.valueOf(v_column.Top) - Double.valueOf(v.Top)) + Double.valueOf(v.Height);
                         objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
                     }
@@ -943,31 +957,29 @@ public class PDFExtract {
 			String sStartPage = "<div class=\"page\" id=\"page_";
 			String sEndBody = "</body>";
 			boolean bFoundFirstPage = false;
-			int iChunkCount = 0;
 			int iPageID = 0;
-			int iChunk = 1;
 			AtomicReference<Hashtable<String,Integer>> hashClasses = new AtomicReference<Hashtable<String,Integer>>();
 			
+
 			while ((sLine = br.readLine()) != null) {				
 				if (sLine.indexOf(sStartPage) == -1 && !bFoundFirstPage) continue; 
 				else { bFoundFirstPage = true;}
 				
-				sbContentPage.append(sLine + "\n");
+				if (sLine.indexOf(sStartPage) == -1 && sLine.indexOf(sEndBody) == -1)
+						sbContentPage.append(sLine + "\n");
 				
-				if (sLine.indexOf(sStartPage) != -1 && iChunkCount < iChunk)
-					iChunkCount++;		
-				else if (sLine.indexOf(sStartPage) != -1 && iChunkCount >= iChunk)
-				{
+				if (sLine.indexOf(sStartPage) != -1)
+				{					
 					iPageID++;
-					String sPageContent = sbContentPage.toString().substring(0,sbContentPage.toString().lastIndexOf(sStartPage));
-					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses));		
-					sbContentPage = new StringBuilder(sbContentPage.toString().substring(sbContentPage.toString().lastIndexOf(sStartPage)));
-				    iChunkCount = 0;					
+					String sPageContent = sbContentPage.toString();
+					String pageContent = GetPageNormalizedHtml(sPageContent,iPageID,hashClasses);
+					sbPageAll.append(pageContent);		
+					sbContentPage = new StringBuilder();
 				}
 				else if (sLine.indexOf(sEndBody) != -1)
 				{
 					iPageID++;
-					String sPageContent = sbContentPage.toString().substring(0,sbContentPage.toString().lastIndexOf(sEndBody));
+					String sPageContent = sbContentPage.toString();
 					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses));	
 					break;
 				}
