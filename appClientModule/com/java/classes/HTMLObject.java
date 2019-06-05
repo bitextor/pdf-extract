@@ -1,5 +1,10 @@
 package com.java.classes;
 
+/**
+ * @author      Anonymous
+ * @version     1.0
+ * @since       1.0
+ */
 public class HTMLObject {
 
 	public static class BolderObject

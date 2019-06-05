@@ -20,6 +20,11 @@ import javax.script.ScriptEngineManager;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
 
+/**
+ * @author      Anonymous
+ * @version     1.0
+ * @since       1.0
+ */
 public class Common {
 	Object _oLockerFile = new Object();
 	
@@ -166,6 +171,19 @@ public class Common {
 		}
 	}
 
+	public double getFloat(Object obj) {
+		try {
+			if (obj == null)
+				return 0;
+			else if (obj == "")
+				return 0;
+			else
+				return Float.parseFloat(obj.toString().trim());
+
+		} catch (Exception e) {
+			return 0;
+		}
+	}
 	public double getDouble(Object obj) {
 		try {
 			if (obj == null)
@@ -243,7 +261,8 @@ public class Common {
 		System.out.println("-B \"Batch File\"");
 		System.out.println("-T \"No of Threads (For Batch File)\"");
 		System.out.println("-LANG \"Language of the File (Optional)\"");
-		System.out.println("-L \"Log File\" (Optional");
+		System.out.println("-D \"Debug Mode (Optional)\"");
+		System.out.println("-L \"Log File\" (Optional)");
 		System.out.println("-o \"Options\" (Optional)");
 		System.out.println("");
 		System.out.println("* Batch file will ignore if input and output file exist");
