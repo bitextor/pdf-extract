@@ -982,6 +982,9 @@ public class PDFExtract {
 			StringBuilder sbContentPage = new StringBuilder();
 			String sLine = "";
 			String sStartPage = "<div class=\"page\" id=\"page_";
+			String sPageTag = "";
+			String sPageHeight = "";
+			String sPageHidth = "";
 			String sEndBody = "</body>";
 			boolean bFoundFirstPage = false;
 			int iPageID = 0;
@@ -1000,14 +1003,20 @@ public class PDFExtract {
 				 */
 				if (sLine.indexOf(sStartPage) != -1)
 				{
-
+					
+					sPageTag = sLine;
+					sPageHeight = sPageTag.replaceAll(REGEX_HEIGHT, "$1");
+					sPageHidth = sPageTag.replaceAll(REGEX_WIDTH, "$1");
+	                
 					if (sbContentPage.toString().length() > 0) {
+						
+						
 						/**
 						 * End previous page
 						 */
 						iPageID++;
 						String sPageContent = sbContentPage.toString();
-						String pageContent = GetPageNormalizedHtml(sPageContent,iPageID,hashClasses);
+						String pageContent = GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth);
 						sbPageAll.append(pageContent);		
 						sbContentPage = new StringBuilder();
 					}
@@ -1016,12 +1025,16 @@ public class PDFExtract {
 				}
 				else if (sLine.indexOf(sEndBody) != -1)
 				{
+
+					sPageHeight = sPageTag.replaceAll(REGEX_HEIGHT, "$1");
+					sPageHidth = sPageTag.replaceAll(REGEX_WIDTH, "$1");
+					
 					/**
 					 * End last page
 					 */
 					iPageID++;
 					String sPageContent = sbContentPage.toString();
-					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses));	
+					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth));	
 					break;
 				}
 			}
@@ -1152,7 +1165,7 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-	private String  GetPageNormalizedHtml (String sContent,int iPageID,AtomicReference<Hashtable<String,Integer>> hashClasses)
+	private String GetPageNormalizedHtml(String sContent,int iPageID, AtomicReference<Hashtable<String,Integer>> hashClasses, String pageWidth, String pageHeight)
 	{
 		String sPageNormalized = "";
 		
@@ -1163,7 +1176,6 @@ public class PDFExtract {
 		Hashtable<Float,Hashtable<Integer,HTMLObject.TextObject>> hashText = new  Hashtable<Float,Hashtable<Integer,HTMLObject.TextObject>>();
 		Hashtable<String,Integer> _hashClasses = hashClasses.get();
 		if (_hashClasses == null) _hashClasses = new Hashtable<String,Integer>();
-		
 		
 		// Get Border
 		Pattern pBorder = Pattern.compile("<div[ ]class=\"p\"[ ]style=\"border:[ ]1pt[ ]solid;top:(.*?)pt;left:(.*?)pt;height:(.*?)pt;width:(.*?)pt[^<>]+(red|green|blue);\"></div>", Pattern.MULTILINE);
@@ -1344,7 +1356,7 @@ public class PDFExtract {
 						    		.replace("[" + TempateStyle.LINESTYLE.toString() + "]" , sStyle)
 						    		.replace("[" + TempateContent.COLUMNPARAGRAPHLINE.toString() + "]" , sLine);
 						    
-						    //Analyze Joins 
+						    //
 						    if (scriptEngine != null && sColumnParagraphLine.length() > 0) {
 
 				    			String sResult = common.getStr(invokeJS("repairObjectSequence", sColumnParagraphLine ));
@@ -1375,7 +1387,7 @@ public class PDFExtract {
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
-		    			}	
+		    			}
 		    			
 		    			//call isFooter
 		    			sResult = common.getStr(invokeJS("isFooter", sColumnParagraphLineAll));
