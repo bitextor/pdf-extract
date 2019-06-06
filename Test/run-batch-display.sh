@@ -1,1 +1,1 @@
-java -jar PDFExtract.jar -B "sample.tab" -T 10 -LANG "en"
+java -jar PDFExtract.jar -B "sample-display.tab" -T 10 -LANG "en"
