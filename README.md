@@ -63,13 +63,13 @@ This example processes a single English PDF file in English.
 java -jar PDFExtract.jar -I pdf-in/sample.pdf -O html-display/sample.htm -LANG en
 ```
 
-This example processes a batch of files as specified in `batch2.txt` using 3 threads and writing to a user specified log file. Custom JavaScript rules for sentence joining and object sequence repairs is also specified.
+This example processes a batch of files as specified in `sample-display.tab` using 3 threads and writing to a user specified log file. Custom JavaScript rules for sentence joining and object sequence repairs is also specified.
 
 ```sh
 java -jar PDFExtract.jar -B sample-display.tab -L batch.log -R customrule.js -T 3 
 ```
 
-The contents of `sample.tab` are:
+The contents of `sample-display.tab` are:
 ```text
 pdf-in/sample.pdf	html-display/sample.html
 pdf-in/sample2.pdf	html-display/sample2.html
