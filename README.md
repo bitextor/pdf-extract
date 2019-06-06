@@ -60,23 +60,21 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 This example processes a single English PDF file in English.
 
 ```sh
-java -jar PDFExtract.jar -I /test/pdf/myfile.pdf -O /test/htm/myfile.htm -LANG en
+java -jar PDFExtract.jar -I pdf-in/sample.pdf -O html-display/sample.htm -LANG en
 ```
 
-This example processes a batch of files as specified in `batch2.txt` using 3 threads and writing to a user specified log file. Custom JavaScript rules for sentence joining and object sequence repairs is also specified.
+This example processes a batch of files as specified in `sample-display.tab` using 3 threads and writing to a user specified log file. Custom JavaScript rules for sentence joining and object sequence repairs is also specified.
 
 ```sh
-java -jar PDFExtract.jar -B /test/batchlists/batch2.txt -L /tests/logs/batch2.log -R /test/customrules/ruleset1.js -T 3 
+java -jar PDFExtract.jar -B sample-display.tab -L batch.log -R customrule.js -T 3 
 ```
 
-The contents of `batch2.txt` are:
+The contents of `sample-display.tab` are:
 ```text
-/test/pdf/myfile1.pdf	/test/htm/myfile1.htm
-/test/pdf/myfile2.pdf	/test/htm/myfile2.htm
-/test/pdf/myfile3.pdf	/test/htm/myfile3.htm
-/test/pdf/myfile4.pdf	/test/htm/myfile4.htm
-/test/pdf/myfile5.pdf	/test/htm/myfile5.htm
-/test/pdf/myfile6.pdf	/test/htm/myfile6.htm
+pdf-in/sample.pdf	html-display/sample.html
+pdf-in/sample2.pdf	html-display/sample2.html
+pdf-in/sample3.pdf	html-display/sample3.html
+pdf-in/sample4.pdf	html-display/sample4.html
 ```
 
 ### Library PDF Extraction
@@ -90,10 +88,10 @@ import com.java.app.PDFExtract;
 
 PDFExtract pdf = new PDFExtract(logpath);
 // Single File
-pdf.Extract(inputFile, outputFile, "options");
+pdf.Extract(inputFile, outputFile, rulePath, language, options, debug);
 
 // Batch File
-pdf.Extract(batchFile, "options");
+pdf.Extract(batchFile, rulePath, threadCount, language, options, debug);
 ```
 
 ----
@@ -148,7 +146,7 @@ Once the various page regions are defined as described above, the objects that f
 	<!--Standard text font for the document has no class assigned to the paragraph-->
 	<!--Classes page, header, footer, column do not need a style. They are for classification only,
 	    but a style can be applied for visual rendering -->
-	<style>
+	<!-- <style>
 		.h1 {
 			font-family:arial;
 			font-weight:bold;
@@ -163,7 +161,7 @@ Once the various page regions are defined as described above, the objects that f
 			text-decoration:underline;
 			font-style:normal;
 		}
-	</style>
+	</style> -->
 	<!--
 	<style>
 		body {
@@ -194,6 +192,14 @@ Once the various page regions are defined as described above, the objects that f
 		}
 	</style>
 	-->
+	<style>body {font-family:Helvetica;font-size:8.9pt;}
+	p{border:1px solid green;}
+	.page{border:1px dashed silver;}
+	.header{border:1px solid pink;}
+	.footer{border:1px solid yellow;}
+	.column{border:1px solid red;}
+	.line{border:0.5px solid blue;}
+	.h1 {font-family:Helvetica;font-size:24.03pt;}</style>
 	<body>
 		<div id="page1" class="page">
 			<div id="page1h1" class="header" style="top:0px;left:0px;width:100px;height:100px;" >
@@ -203,7 +209,7 @@ Once the various page regions are defined as described above, the objects that f
 			</div>
 			<div id="page1c1" class="column" style="top:0px;left:0px;width:100px;height:100px;">
 				<p id="page1c1p1" class="h1" style="top:0px;left:0px;width:100px;height:100px;">
-					<span id="page1c1p1l1" class="line h1" style="top:0px;left:0px;width:100px;height:100px;">heading text 1</span>
+					<span id="page1c1p1l1" class="line" style="top:0px;left:0px;width:100px;height:100px;">heading text 1</span>
 				</p>
 				<p id="page1c1p2" style="top:0px;left:0px;width:100px;height:100px;">
 					<span id="page1c1p2l1" style="top:0px;left:0px;width:100px;height:100px;">paragraph 2 line 1</span>

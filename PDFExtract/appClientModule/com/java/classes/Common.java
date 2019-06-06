@@ -3,6 +3,7 @@ package com.java.classes;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -228,6 +229,30 @@ public class Common {
 			return false;
 		}
 	}
+	public boolean validateFile(String filepath) {
+		File file = getFile(filepath);
+		if (file != null && file.exists()) {
+			if (!file.canWrite()) {
+				return false;
+			}
+			/* Java lies on Windows */
+			try {
+				new FileOutputStream(file, true).close();
+			} catch (IOException e) {
+				return false;
+			}
+			return true;
+		}else {
+			try {
+				file.createNewFile();
+				file.delete();
+				return true;
+			}
+			catch (Exception e) {
+				return false;
+			}
+		}
+	}
 	public void createDir(String filepath) {
 		getFile(filepath).mkdirs();
 	}
@@ -254,18 +279,35 @@ public class Common {
 	}
 	public void printHelp() {
 		System.out.println("------------------------");
-		System.out.println("Parameters");
+		System.out.println("Arguments");
 		System.out.println("------------------------");
-		System.out.println("-I \"Input File\"");
-		System.out.println("-O \"Output File\"");
-		System.out.println("-B \"Batch File\"");
-		System.out.println("-T \"No of Threads (For Batch File)\"");
-		System.out.println("-LANG \"Language of the File (Optional)\"");
-		System.out.println("-D \"Debug Mode (Optional)\"");
-		System.out.println("-L \"Log File\" (Optional)");
-		System.out.println("-o \"Options\" (Optional)");
-		System.out.println("");
-		System.out.println("* Batch file will ignore if input and output file exist");
+		
+		System.out.print("-I <input_file>\t\t");
+		System.out.println("specifies the path to the source PDF file process for extraction.");
+		
+		System.out.print("-O <output_file>\t");
+		System.out.println("specifies the path to the output HTML file after extraction.");
+		
+		System.out.print("-B <batch_file>\t\t");
+		System.out.println("specifies the path to the batch file for processing list of files.\n\t\t\tThe input file and output file are specified on the same line delimited by a tab.\n\t\t\tEach line is delimited by a new line character.");
+		
+		System.out.print("-L <log_path>\t\t");
+		System.out.println("specifies the path to write the log file to.\n\t\t\tAs it is common for PDF files to have issues when processing\n\t\t\tsuch as being password protected or other forms of restricted permissions,\n\t\t\tthe log file can be written to a specifed location for additional processing.\n\t\t\tIf not specified, then the log file will write to stdout.");
+		
+		System.out.print("-R <rule_path>\t\t");
+		System.out.println("specifies a custom set of rules to process joins between lines.\n\t\t\tAs this can vary considerably between languages, a custom set of rules can be implimented.\n\t\t\tSee Joining Lines for more details.\n\t\t\tIf no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution.\n\t\t\tIf the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.");
+		
+		System.out.print("-T <number_threads>\t");
+		System.out.println("specifies the number of threads to run concurrently when processing PDF files.\n\t\t\tOne file can be processed per thread. If not specified, then the default valur of 1 thread is used.");
+		
+		System.out.print("-LANG <lang>\t\t");
+		System.out.println("specifies the language of the file using ISO-639-1 codes when processing.\n\t\t\tIf not specified then the default language rules will be used.\n\t\t\tIf DETECT is specified instead of a language code, then each paragraph will be processed\n\t\t\tvia Language ID tools to determine the language of the paragraph.\n\t\t\tThe detected language will be used for sentence join analysis.\n\t\t\t(DETECT is not supported in this version)");
+		
+		System.out.print("-D\t\t\t");
+		System.out.println("enables Debug/Display mode.\n\t\t\tThis changes the output to a more visual format that renders as HTML in a browser.");
+		
+		System.out.print("-o <options>\t\t");
+		System.out.println("specifies control parameters.\n\t\t\t(Reserved for future use where more conifgurable parameters will be permitted.)");
 		System.out.println("------------------------");
 	}
 

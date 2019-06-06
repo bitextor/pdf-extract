@@ -85,18 +85,27 @@ public class PDFExtract {
     private static final String REGEX_WORDSPACING = ".*word-spacing:([\\-\\+0-9]+.[0-9]+).*";
 	private Common common = new Common();
 
-	private void initial(String logFilePath) {
+	private void initial(String logFilePath) throws Exception {
 		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
 		rootLogger.setLevel(Level.toLevel("off"));
 
 		if (common.IsEmpty(logFilePath)) {
 			writeLogFile = false;
 		}else {
-			writeLogFile = true;
-			
+
 			if (common.IsEmpty(common.getExtension(logFilePath))){
-				logFilePath += ".writeLogFile";
+				logFilePath += ".log";
 			}
+
+			/**
+			 * Validate log file
+			 */
+			boolean logFileValid = common.validateFile(logFilePath);
+			if (!logFileValid) {
+				throw new Exception("Invalid log file path or permission denied.");
+			}
+			
+			writeLogFile = true;
 			
 			logPath = logFilePath;
 
@@ -131,6 +140,7 @@ public class PDFExtract {
 	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
 	 * @param options    The control parameters
 	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+	 * 
 	 * @since            1.0
 	 */
 	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options, int debug) throws Exception {
@@ -255,7 +265,7 @@ public class PDFExtract {
                 }catch(Exception e) {
     				throw new Exception("Normalize fail.: " + e.getMessage());
                 }
-    			//common.deleteFile(inputNormalize);
+    			common.deleteFile(inputNormalize);
     			
     			/**
     			 * Write to output file.  
@@ -297,6 +307,7 @@ public class PDFExtract {
 	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
 	 * @param options    The control parameters
 	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+	 * 
 	 * @since            1.0
 	 */
 	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug) throws Exception {
