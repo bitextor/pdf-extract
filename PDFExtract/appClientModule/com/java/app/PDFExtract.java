@@ -255,7 +255,7 @@ public class PDFExtract {
                 }catch(Exception e) {
     				throw new Exception("Normalize fail.: " + e.getMessage());
                 }
-    			//common.deleteFile(inputNormalize);
+    			common.deleteFile(inputNormalize);
     			
     			/**
     			 * Write to output file.  
