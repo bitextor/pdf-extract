@@ -172,7 +172,7 @@ public class Common {
 		}
 	}
 
-	public double getFloat(Object obj) {
+	public float getFloat(Object obj) {
 		try {
 			if (obj == null)
 				return 0;

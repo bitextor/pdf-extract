@@ -272,9 +272,7 @@ public class PDFExtract {
 				if (!runnable) common.print(inputFile, "Error: " + message);
 			}
 
-			if (!batchMode) {
-				throw e;
-			}
+			throw e;
 		}finally {
 			if (batchMode) {
 	            synchronized (lockerExtract) { countThreadExtract--; }
@@ -1087,7 +1085,7 @@ public class PDFExtract {
 		for (String classes : listClasse) {
 			if (!sGlobalStyle.equals(classes))
 			{
-				float fFountSize = Float.parseFloat(classes.replaceAll(REGEX_FONTSIZE, "$1"));
+				float fFountSize = common.getFloat(classes.replaceAll(REGEX_FONTSIZE, "$1"));
 				for (int i = 0; i < 10; i++) {
 					if (hashFontSize.containsKey(fFountSize))
 					{
