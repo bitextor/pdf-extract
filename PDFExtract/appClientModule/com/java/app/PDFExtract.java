@@ -272,7 +272,9 @@ public class PDFExtract {
 				if (!runnable) common.print(inputFile, "Error: " + message);
 			}
 
-			throw e;
+			if (!batchMode) {
+				throw e;
+			}
 		}finally {
 			if (batchMode) {
 	            synchronized (lockerExtract) { countThreadExtract--; }
@@ -337,6 +339,13 @@ public class PDFExtract {
 				
 				if (countThreadExtract < maxThreadCount) {
 					String line = lines.get(ind);
+
+					/**
+					 * Skip the empty line
+					 */	
+					if (common.IsEmpty(line)) {
+						continue;
+					}
 					
 					AddThreadExtract(ind, line, rulePath, language, options, debug);
 
@@ -414,6 +423,7 @@ public class PDFExtract {
     						common.print(inputFile, "Error: " + message);
     					}
 
+			            synchronized (lockerExtract) { countThreadExtract--; }
     				}
     			}
     		};
