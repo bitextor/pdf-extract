@@ -58,9 +58,9 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 - `-L <log_path>` specifies the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
 - `-R <rule_path>` specifies a custom set of rules to process joins between lines, identify page headers and footers and perform custom object sequence repairs. See [Runtime JavaScript Extensions](#runtime-javascript-extensions)
 - `-T <number_threads>` specifies the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then the default valur of 1 thread is used.
-- `-LANG <lang>` specifies the language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used. 
+- `-LANG <lang>` specifies the language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used. This is used to determine which rules to apply when joining sentences.
     If `DETECT` is specified instead of a language code, then each paragraph will be processed via Language ID tools to determine the language of the paragraph. The detected language will be used for sentence join analysis. (DETECT is not supported in this version)  
-- `-D` enables Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+- `-D` enables Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser. If Debug mode is enabled, then the output is less suitable for alignment, but better to view what is happening.
 - `-o <options>` specifies control parameters. (Reserved for future use where more conifgurable parameters will be permitted.)
 
 **Example:**
@@ -85,16 +85,43 @@ pdf-in/sample3.pdf	html-display/sample3.html
 pdf-in/sample4.pdf	html-display/sample4.html
 ```
 
+The format is:
+```
+<input_path>\t<output_path>
+<input_path>\t<output_path>
+<input_path>\t<output_path>
+...
+```
+
 ### Library PDF Extraction
 
-PDFExtract may be usef from within Java with the following import.
+PDFExtract has 2 methods overloaded methods
 
-TODO: UPDATE DOCS TO SHOW ALL OPTIONS THE SAME AS COMMAND LINE
+1. Single File
+```Java
+public void Extract(String inputFile, String outputFile, String rulePath, String language, String options, int debug) throws Exception
+```
+
+2. Batch File
+```java
+public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug) throws Exception
+```
+
+PDFExtract may be used from within Java with the following import:
 
 ```java
 import com.java.app.PDFExtract;
 
 PDFExtract pdf = new PDFExtract(logpath);
+
+String inputFile = "/data/test.pdf";
+String outputFile = "/data/test.htm";
+String rulePath = "/data/rule.js";
+String language = "en";
+String options = "";
+int debug = 0; 
+int threadCount = 5;
+
 // Single File
 pdf.Extract(inputFile, outputFile, rulePath, language, options, debug);
 
@@ -104,39 +131,42 @@ pdf.Extract(batchFile, rulePath, threadCount, language, options, debug);
 
 ----
 ## How It Works
-PDF is a publishing format and is not designed for easy editing and manipulation. At the core of PDF is an advanced imaging model derived from the PostScript page description language. This PDF Imaging Model enables the description of text and graphics in a device-independent and resolution-independent manner. To improve performance for interactive viewing, PDF defines a more structured format than that used by most PostScript language programs. Unlike Postscript, which is a programming language, PDF is based on a structured binary file format that is optimized for high performance in interactive viewing. PDF also includes objects, such as annotations and hypertext links, that are not part of the page content itself but are useful for interactive viewing and document interchange.
+Adobe Portal Document Format (PDF) is a publishing format and is not designed for easy editing and manipulation. At the core of PDF is an advanced imaging model derived from the PostScript page description language. This PDF Imaging Model enables the description of text and graphics in a device-independent and resolution-independent manner. To improve performance for interactive viewing, PDF defines a more structured format than that used by most PostScript language programs. 
 
-Our first step is to extract the PDF content out into a DOM that can be used to further processed. PDFExtract uses the Pdf2Dom Java library as a parser for the CSSBox rendering engine in order to get a DOM designed for rendering in HTML, but not suitable for mining. PDFExtract further processes and mines the DOM into a normalized and simplified HTML format. 
+Unlike PostScript, which is a programming language, PDF is based on a structured binary file format that is optimized for high performance in interactive viewing. PDF also includes objects, such as annotations and hypertext links, that are not part of the page content itself but are useful for interactive viewing and document interchange.
 
-The core concept is very simple. Regions within the PDF are defined as a set of boxes. The lowest level of a box is a letter, then progressively expands to words, lines, paragraphs, columns and pages. Words are merged into lines. Lines are merged into paragraphs. The below examples show the original PDF file in the right, with the page marked in a blue box, columns marked in a red box, paragraphs marked in a green box and lines marked in a blue box. Once the clean boxed regions are defined, the content is merged to create clean HTML. 
+Our first step is to extract the PDF content out into a DOM that can be further processed into an optimal format for alignment between two similar documents. PDFExtract uses the Pdf2Dom Java library as a parser for the CSSBox rendering engine in order to get a DOM. This DOM is designed for rendering in HTML with large output that may have content out of sequence in terms of when it is rendered, but sill in correctly placed on the page. For example, a footer could be embedded in the sequence at the start rather than at the bottom of the page. There may also be off-page noise from the PDF creation tool that can confuse many aligners. This content is not visible on the page but is embedded in the document. For this reason, the raw DOM is not very suitable for aligning and mining of content without further processing. 
+
+PDFExtract refines the initial DOM into a normalized and simplified HTML format that is light and fast to process.  The core concept is very simple. Regions within the PDF are defined as a set of boxes. The lowest level of a box is a letter, then progressively expands to words, lines, paragraphs, columns and pages. Words are merged into lines. Lines are merged into paragraphs. The below examples show the original PDF file in the right, with the page marked in a blue box, columns marked in a red box, paragraphs marked in a green box and lines marked in a blue box. Once the clean boxed regions are defined, the content is merged to create clean HTML. 
 
 All content in the HTML output is sorted by the position it appears on the page using the top left coordinates. This sorting is necessary as the order that the information appeared in the PDF file may not be in sequence. 
 
 >Note: This will likely not work on languages that are rendered right-to-left and has not been tested at present for such languages.
 
+
 ![alt text](Example1.png "Example 1")
 
 ### Basic Process
-#### Sort Objects
-Objects in a PDF are not necessarily in sequence. As rendering is using X and Y coordinates, they can be in any order and still look correct visually. For example, a page footer could be in the middle of the objects in sequence, not the last set of objects as they would appear visually. The first task is to sort the objects by X and Y coordinates at a page by page level. 
-Words
-Words are first identified and repaired. PDF will usually have an entire word in one object, but sometimes the PDF creation tool will create words using multiple objects. In some cases, as granular as 1 object per letter. Visually in a PDF this looks fine, however, in order to export the text into a useable format for processing, the objects must be combined into words.  
-### Words
+#### Sort and Clean Objects
+Objects in a PDF are not necessarily in sequence. As rendering is using X and Y coordinates, they can be in any order and still look correct visually. For example, a page footer could be in the middle of the objects in sequence, not the last set of objects as they would appear visually. The first task is to sort the objects by X and Y coordinates at a page by page level. Once sorted, off-page objects are filtered and removed.
+
+#### Words
+Words are first identified and repaired. PDF files will usually have an entire word in one object, but sometimes the PDF creation tool will create words using multiple objects. In some cases, as granular as 1 object per letter. Visually in a PDF this looks fine, however, in order to export the text into a useable format for processing, the objects must be combined into words.  
 
 ![alt text](Words.png)
 
-### Lines
-Once words have been repaired, the next stage is to identify the lines by grouping words in sequence together.
+#### Lines
+Once words have been repaired, the next stage is to identify the lines by grouping words in sequence together. This can be complex when there are multiple columns of content in a single page. Determining the column boundary is especially complex when colummns, and if miscalculated, the resulting sentence 
  
 ![alt text](Line.png)
 
-### Paragraphs
+#### Paragraphs
 Once lines have been identified, they can be analyzed as groups of lines by measuring the spacing between lines. When the line spacing varies, it is typically a new paragraph. 
 Lines may have different left and right offsets such as for indentation and wrapping. The top and left most position can be recorded as X and Y values of the lines for the paragraph. The width of the paragraph is calculated by looking at the right most position of all lines. The width can be calculated looking at the Y position + the height of the lower most line. 
  
 ![alt text](Paragraph.png)
  
-### Columns
+#### Columns
 Columns are calculated by analyzing the vertical path of paragraphs to determine in they are in a column. Generally, paragraphs will have similar widths and if there is a second column, then it will be detectable by looking at the X positions of paragraphs for similarity. 
 
 ![alt text](Column.jpg)
@@ -266,6 +296,7 @@ The basic structure is as follows
 ```sh
 <div class="page"> \ <div class="column|header|footer"> \ <p> \ <span> 
 ```
+
 ### Coordinates
 Columns, headers, footers, paragraphs and spans all have `top`, `left`, `width` and `height` parameters as part of the style.
 
