@@ -347,8 +347,12 @@ top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999
 ```
 ## Runtime JavaScript Extensions
 
+The Oracle Nashorn JavaScript engine is based on and highly compliant with the ECMAScript 5.1 specification. The Nashorn engine compiles JavaScript to Java Bytecode during runtime and thus provides high interoperability of Java and JavaScript and very high performance.
+This feature is provided as a means to extend the functionality of PDFExtract with custom rules and handlers without the need to recompile the main binary.
 
- As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+If no rule file path is passed, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without custom JavaScript functions. 
+
+When the engine is initialized, it checks the functions and only calls them if they are present. Non-standard functions can be defined but will only be called from within the script.
 
 ### Joining Lines
 Lines are handled differently to the rest of the elements. Lines are represented by a `<span class="line"...>
