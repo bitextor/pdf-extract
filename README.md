@@ -147,14 +147,37 @@ All content in the HTML output is sorted by the position it appears on the page 
 
 ### Basic Process
 **Processing Sequence**
-1. Group objects by Page
-2. Process Words
-3. Process Lines
-4. Process Paragraphs
-5. Process Columns
-6. Sort Page contents
-7. Process Runtime JavaScript Extensions
-8. Font Normalization
+1. Read PDF File and convert to HTML DOM
+2. Dimension HTML boxes and Clean
+2.1 Loop through each input line to collect all objects in each page (ignore objects that are out of page)
+2.2 Get box objects
+2.2.1 Loop through the collection to get the box dimensions for each type (this will get list of all div (red/green/blue) keep in List
+2.3 Draw box to HTML
+2.3.1 Loop through each input line 
+2.3.1.1 Remove garbage objects (blank space, image, etc.)
+2.3.1.2 Remove objects that out of page
+2.3.1.2 Add box objects from 2.3
+3. Normalize HTML
+3.1 Loop through each Page
+3.1.1 Sort Column
+3.1.2 Loop through each Column
+3.1.2.1 Sort Paragraph
+3.1.2.2 Loop each Paragraph
+3.1.2.2.1 Sort Line
+3.1.2.2.2 Loop through each Line
+3.1.2.2.2.1 Get object list inside the box
+3.1.2.2.2.2 Sort Words
+3.1.2.2.2.3 Format output Line with span
+3.1.2.2.2.4 Invoke JS repairObjectSequence
+3.1.2.2.3 Invoke JS analyzeJoins
+3.1.2.2.4 Invoke JS isHeader
+3.1.2.2.5 Invoke JS isFooter
+3.1.2.2.6 Generate div Paragraph
+3.1.2.3 Generate div Column
+3.1.3 Generate div Page
+3.2 Font Normalization
+3.3 Write to output file
+
 
 #### Pages
 Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. Processing is grouped by page.
@@ -187,7 +210,9 @@ Objects in a PDF are not necessarily in sequence. As rendering is using X and Y 
 Allows for custom rules to process, repair or identify page elements such as headers, footers or line joins. See [Runtime JavaScript Extensions](#runtime-javascript-extensions)
 
 ### Font Normalization
-Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
+When comparing pages for alignment, the fonts may be totally different. This approach normalizes the fonts to names that are not language specific. 
+
+The dominant font is considered the default for the document, so removed. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font. 
 
 ## Output HTML Format ##
 Once the various page regions are defined as described above, the objects that fall within the each region can be extracted into a normalized HTML format. The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
@@ -322,12 +347,14 @@ top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999
 ```
 ## Runtime JavaScript Extensions
 
-TODO
+
  As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
 
 ### Joining Lines
 Lines are handled differently to the rest of the elements. Lines are represented by a `<span class="line"...>
-` tag and have an additional attribute that provides recommendations on whethere a line is continued on the next line. Normal HTML automatically joins content together on a single line (with wrapping as needed by screen size) unless explictly instructed no to by the use of a `<br>` element or other line breaking elements. PDF files render text in a specified position, but do not retain any line wrapping or joining information. In many cases, rules can be used to determine if a 2 lines should be joined or not. However, there are many ambigious situations where a rule is insufficent. In this version of PDFExtract, we are determining whether to join only with relatively simple rules. Future versions will impliment machine learning approaches to provide intelligence to joining that is able to handle ambigious exceptiions with more accuracy.
+` tag and have an additional attribute that provides recommendations on whethere a line is continued on the next line. Normal HTML automatically joins content together on a single line (with wrapping as needed by screen size) unless explictly instructed no to by the use of a `<br>` element or other line breaking elements. 
+
+PDF files render text in a specified position, but do not retain any line wrapping or joining information. In many cases, rules can be used to determine if a 2 lines should be joined or not. However, there are many ambigious situations where a rule is insufficent. In this version of PDFExtract, we are determining whether to join only with relatively simple rules. Future versions will impliment machine learning approaches to provide intelligence to joining that is able to handle ambigious exceptiions with more accuracy.
 
 Sentence joining is designed to be flexible and for custom rules to be applied. PDFExtract impliments Oracle's Nashorn JavaScript engine for custom rules that handle sentence joining without the need to complie the rules into the code. 
 
