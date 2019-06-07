@@ -167,6 +167,13 @@ public class PDFExtract {
 				 */
 				common.checkPermissions(inputFile);
 			}
+
+			/**
+			 * Check output file not empty
+			 */
+			if (common.IsEmpty(outputFile)) {
+				throw new Exception("Output file cannot be empty.");
+			}
 			
 			if (!batchMode) {
 				pdfLanguage = language;
@@ -392,7 +399,7 @@ public class PDFExtract {
 	    				}
 	    				inputFile = cols[0];
 	    				outputFile = cols[1];
-
+	    				
     					/**
     					 * Call function to extract
     					 */	
