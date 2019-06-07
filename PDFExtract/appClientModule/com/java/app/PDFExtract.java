@@ -342,6 +342,7 @@ public class PDFExtract {
 					 * Skip the empty line
 					 */	
 					if (common.IsEmpty(line)) {
+						ind++;
 						continue;
 					}
 					
