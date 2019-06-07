@@ -1,16 +1,11 @@
 package com.java.app;
 
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.io.Writer;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,7 +23,6 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.fit.pdfdom.PDFDomTree;
 import org.fit.pdfdom.PDFDomTreeConfig;
@@ -212,6 +206,7 @@ public class PDFExtract {
 				}
 			}
 
+			StringBuffer htmlBuffer = new StringBuffer(""); 
 			/**
 			 * Call function to convert PDF to HTML
 			 */
@@ -220,7 +215,7 @@ public class PDFExtract {
 				outputHtml = common.combine(outputPath, outputHtml);
 			}
 			try {
-				convertPdfToHtml(inputFile, outputHtml);
+				htmlBuffer = convertPdfToHtml(inputFile, outputHtml);
 			}catch(Exception e) {
 				throw e;
 			}
@@ -229,50 +224,31 @@ public class PDFExtract {
 			 * Call function to paint html box
 			 */
 			//common.writeLog(logPath, inputFile, "Start paintHtmlBox...", false);
-			String inputHtmlBox = outputHtml;
-			String outputHtmlBox = outputName + ".box." + outputExt;
-			if (!common.IsEmpty(outputPath)) {
-				outputHtmlBox = common.combine(outputPath, outputHtmlBox);
-			}
             try {
-        		paintHtmlBox(inputHtmlBox, outputHtmlBox);	
+            	htmlBuffer = paintHtmlBox(htmlBuffer);
             }catch(Exception e) {
 				throw new Exception("paintHtmlBox fail.: " + e.getMessage());
             }
-			common.deleteFile(inputHtmlBox);
 
 			
-            if (debugMode == 1) {
-
-    			/**
-    			 * If debugMode is 1, will write the html box version to output  
-    			 */
-    			common.moveFile(outputHtmlBox, outputFile);
-
-            }else {
+            if (debugMode == 0) {
 
     			/**
     			 * Call function to normalize html  
     			 */
 				//common.writeLog(logPath, inputFile, "Start Normalize...", false);
-    			String inputNormalize = outputHtmlBox;
-    			String outputNormalize = outputName + ".normalized." + outputExt;
-    			if (!common.IsEmpty(outputPath)) {
-    				outputNormalize = common.combine(outputPath, outputNormalize);
-    			}
                 try {
-                	Normalize(inputNormalize, outputNormalize);
+                	htmlBuffer = Normalize(htmlBuffer);
                 }catch(Exception e) {
     				throw new Exception("Normalize fail.: " + e.getMessage());
                 }
-    			common.deleteFile(inputNormalize);
-    			
-    			/**
-    			 * Write to output file.  
-    			 */
-    			common.moveFile(outputNormalize, outputFile);
 
             }
+            
+			/**
+			 * Write to output file.  
+			 */
+			common.WriteFile(outputFile, htmlBuffer.toString());
 
 			if (writeLogFile) {
 				if (runnable) common.print(inputFile, "Extract success. -> " + outputFile + "");
@@ -456,9 +432,9 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-    private void convertPdfToHtml(String inputFile, String outputFile) throws Exception {
+    private StringBuffer convertPdfToHtml(String inputFile, String outputFile) throws Exception {
     	PDDocument pdf = null;
-		Writer output = null;
+		StringWriter output = null;
 		try {
             //loads the PDF file, parse it and gets html file
             pdf = PDDocument.load(new java.io.File(inputFile));
@@ -466,8 +442,9 @@ public class PDFExtract {
             PDFDomTreeConfig config = PDFDomTreeConfig.createDefaultConfig();
             config.setImageHandler(handler);
             PDFDomTree parser = new PDFDomTree(config);
-            output = new PrintWriter(outputFile, "utf-8");
+            output = new StringWriter();
             parser.writeText(pdf, output);
+            return output.getBuffer();
 		}catch(Exception e) {
 			throw new Exception("Convert pdf to html fail.: " + e.getMessage());
 		}finally {
@@ -481,13 +458,13 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-    private void paintHtmlBox(String inputFile, String outputFile) throws Exception {
+    private StringBuffer paintHtmlBox(StringBuffer htmlBuffer) throws Exception {
         BufferedReader b_in = null;
         HashMap<Integer, List<HtmlTagValues>> hList = new HashMap<Integer, List<HtmlTagValues>>();
         int hPage = -1;
         try {
 			
-	        InputStreamReader i_in = new InputStreamReader(new FileInputStream(inputFile), StandardCharsets.UTF_8);
+	        InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()), StandardCharsets.UTF_8);
 	        b_in = new BufferedReader(i_in);
 	        double pageWidth = 0;
 	        double pageHeight = 0;
@@ -548,12 +525,13 @@ public class PDFExtract {
         
         try{
         	LinkedHashMap<Integer, ArrayList<String>> model = getBox(hList);
-        	drawBox(inputFile, outputFile, model);
+        	htmlBuffer = drawBox(htmlBuffer, model);
         }catch(Exception e) {
         	e.printStackTrace();
         	throw new Exception("error drawing: " + e.getMessage());
         }
 
+        return htmlBuffer;
     }
 
 	/**
@@ -608,16 +586,14 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-    private void drawBox(String inputFile, String outputFile, LinkedHashMap<Integer, ArrayList<String>> model) throws IOException {
+    private StringBuffer drawBox(StringBuffer htmlBuffer, LinkedHashMap<Integer, ArrayList<String>> model) throws IOException {
 
     	BufferedReader b_in = null;
-    	BufferedWriter b_out = null;
+    	
+    	StringBuffer htmlBufferOut = new StringBuffer();
     	try {
-	        InputStreamReader i_in = new InputStreamReader(new FileInputStream(inputFile), StandardCharsets.UTF_8);
+	        InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()), StandardCharsets.UTF_8);
 	        b_in = new BufferedReader(i_in);
-	        FileOutputStream f_out = new FileOutputStream(outputFile);
-	        OutputStreamWriter o_out = new OutputStreamWriter(f_out, StandardCharsets.UTF_8);
-	        b_out = new BufferedWriter(o_out);
 
 	        double pageWidth = 0;
 	        double pageHeight = 0;
@@ -634,10 +610,10 @@ public class PDFExtract {
 	                line = line.replaceAll(".*src.*>", "");
 	                line = line.replaceAll("<div class=\"r\" style.*", "");
 	            } else if (m1.find()) {
-	                b_out.write(line + "\n");
+	            	htmlBufferOut.append(line + "\n");
 	                if (nPage <= model.size() && model.size() > 0) {
 	                    for (int x = 0; x < model.get(nPage).size(); x++) {
-	                        b_out.write(model.get(nPage).get(x) + "\n");
+	                        htmlBufferOut.append(model.get(nPage).get(x) + "\n");
 	                    }
 	                    nPage++;
 	                }
@@ -657,25 +633,17 @@ public class PDFExtract {
 		                    wordIterator = 1;
 		                }
 		                line = line.replaceAll(REGEX_COLOR, "$1" + "#000000" + "$3");
-		                b_out.write(line + "\n");
+		                htmlBufferOut.append(line + "\n");
 	                }
 	            } else {
-	                b_out.write(line + "\n");
+	                htmlBufferOut.append(line + "\n");
 	            }
 	        }
     	}finally {
-
-    		if (b_in != null) {
-    			b_in.close();
-    			b_in = null;
-    		}
-            
-    		if (b_out != null) {
-    			b_out.close();
-    			b_out = null;
-    		}
-            	
+    		if (b_in != null) { b_in.close(); b_in = null; }	
     	}
+    	
+    	return htmlBufferOut;
     }
 
 	/**
@@ -697,6 +665,7 @@ public class PDFExtract {
         int round = 0;
         int columnCount = 0;
         double nextTop = 0;
+        double nextLeft = 0;
         double previousTop = 0;
         //
         double paraTop = 0;
@@ -744,12 +713,14 @@ public class PDFExtract {
                 }
                 if (v_next != null) {
                     nextTop = Math.abs(Double.valueOf(v.Top) - Double.valueOf(v_next.Top));
+                    nextLeft = Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left));
                     
                     if (nextTop > 0) {
                     	gapLine = Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - Double.valueOf(v_next.Top));	
                     }
 
                     if (nextTop < 2) nextTop = 0;
+                    if (nextLeft < 2) nextLeft = 0;
                 }
 
                 //for line
@@ -862,7 +833,8 @@ public class PDFExtract {
                 
                 if ((nextTop > 0 && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
                 		|| (v_next == null || (nextTop > lineHeight*5))
-                		|| (v_next == null || (nextTop > lineHeight  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.FontSize) > 20))
+                		|| (v_next == null || (nextTop > lineHeight && objline != null && objline.size() > 0 && nextLeft > Collections.max(objline) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
+                		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.FontSize) > 20))
                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
@@ -970,14 +942,14 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-    private void Normalize(String inputFile, String outputFile) throws Exception
+    private StringBuffer Normalize(StringBuffer htmlBuffer) throws Exception
 	{
-		FileInputStream fs = null;	
+		InputStreamReader in = null;	
 		BufferedReader br = null;
 		try {
 
-			fs = new FileInputStream(inputFile);
-			br = new BufferedReader(new InputStreamReader(fs, "UTF-8"));
+			in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()));
+			br = new BufferedReader(in);
 			StringBuilder sbPageAll = new StringBuilder();
 			StringBuilder sbContentPage = new StringBuilder();
 			String sLine = "";
@@ -996,7 +968,7 @@ public class PDFExtract {
 				else { bFoundFirstPage = true;}
 				
 				if (sLine.indexOf(sStartPage) == -1 && sLine.indexOf(sEndBody) == -1)
-						sbContentPage.append(sLine + "\n");
+					sbContentPage.append(sLine + "\n");
 
 				/**
 				 * New page found
@@ -1053,11 +1025,9 @@ public class PDFExtract {
 			sbPageAllNomalize.set(sbPageAll);
 			String sClasses = GetNormalizeClasses(hashClasses.get(),sbPageAllNomalize);
 
-		    FileUtils.writeStringToFile(new File(outputFile),
-		    		GetTemplate(Tempate.body.toString())
+			return new StringBuffer(GetTemplate(Tempate.body.toString())
 		    		.replace("[" + TempateContent.STYLE.toString() + "]",sClasses)
-		    		.replace("[" + TempateContent.BODY.toString() + "]",sbPageAllNomalize.get().toString())
-		    		,"utf-8");
+		    		.replace("[" + TempateContent.BODY.toString() + "]",sbPageAllNomalize.get().toString()));
 			
 		} catch (Exception e1) {
 			e1.printStackTrace();
@@ -1067,7 +1037,7 @@ public class PDFExtract {
 		{
 			try {
 				if (br != null) br.close();
-				if (fs != null) fs.close();
+				if (in != null) in.close();
 			} catch (Exception e2) {
 				throw e2;
 			}
