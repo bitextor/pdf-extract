@@ -30,9 +30,10 @@ PDFExtract is a PDF parser that converts and extracts PDF content into a HTML fo
 
 While there are many PDF extraction and HTML DOM conversion tools, none are designed to prepare data for alignment between multilingual websites for the purpose of creating parallel corpora. Typically, other tools will extract to a HTML format that is designed to be rendered for human consumption, are very heavy and bloated with information that is not needed, while missing information that would be helpful to an aligner. 
 
-The HTML format produced by PDFExtract is simplified and normalized so that it can be easily matched to other documents that contain the same or similar content translated in different languages. Repairs to the document flow and structure are made so as to be in logical sequence as they appear in the document.  Tools such as Bitextor are able to directly process the outputs.
+The HTML format produced by PDFExtract is simplified and normalized so that it can be easily matched to other documents that contain the same or similar content translated in different languages. Repairs to the document flow and structure are made so as to be in logical sequence as they appear in the document.  Tools such as Bitextor are able to directly process the outputs. 
 
 PDFExtract is extendable without needed to modify the JAR file using the Nashorn JavaScript engine and a set of custom JavaScript functions. This allows for further optimization for specific sets of content or to perform additional tasks without the complexity of understanding the entire workflow and process.
+
 ----
 ## Installation
 Installation instructions are provided in [INSTALL.md](INSTALL.md)
