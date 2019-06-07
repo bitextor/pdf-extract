@@ -147,6 +147,7 @@ All content in the HTML output is sorted by the position it appears on the page 
 
 ### Basic Process
 **Processing Sequence**
+```
 1. Read PDF File and convert to HTML DOM
 2. Dimension HTML boxes and Clean
 2.1 Loop through each input line to collect all objects in each page (ignore objects that are out of page)
@@ -157,7 +158,7 @@ All content in the HTML output is sorted by the position it appears on the page 
 2.3.1.1 Remove garbage objects (blank space, image, etc.)
 2.3.1.2 Remove objects that out of page
 2.3.1.2 Add box objects from 2.3
-3. Normalize HTML
+3. Normalize and Restructure HTML
 3.1 Loop through each Page
 3.1.1 Sort Column
 3.1.2 Loop through each Column
@@ -177,7 +178,7 @@ All content in the HTML output is sorted by the position it appears on the page 
 3.1.3 Generate div Page
 3.2 Font Normalization
 3.3 Write to output file
-
+```
 
 #### Pages
 Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. Processing is grouped by page.
