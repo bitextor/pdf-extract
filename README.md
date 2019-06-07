@@ -26,14 +26,21 @@
 ----
 ## Introduction
 ### What is PDFExtract?
-PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources. The output is intended for this purpose only and not for rendering as HTML in a web broweser. While there are many PDF extraction and HTML DOM conversion tools, none are designed to prepare data for alignment between multilingual websites. Typically, other tools will extract to a HTML format that is designed to be rendered for human consumption, are very heavy and bloated with informaiton that is not needed, while missing information that would be helpful to an aligner. The extracted format from PDFExtract is simplified and normalized so that it can be easily matched to other documents that contain the same or similar content translated in different languages. Tools such as Bitextor are able to directly process the outputs.
+PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources. The output is intended for this purpose only and not for rendering as HTML in a web browser. 
 
+While there are many PDF extraction and HTML DOM conversion tools, none are designed to prepare data for alignment between multilingual websites for the purpose of creating parallel corpora. Typically, other tools will extract to a HTML format that is designed to be rendered for human consumption, are very heavy and bloated with information that is not needed, while missing information that would be helpful to an aligner. 
+
+The HTML format produced by PDFExtract is simplified and normalized so that it can be easily matched to other documents that contain the same or similar content translated in different languages. Repairs to the document flow and structure are made so as to be in logical sequence as they appear in the document.  Tools such as Bitextor are able to directly process the outputs.
+
+PDFExtract is extendable without needed to modify the JAR file using the Nashorn JavaScript engine and a set of custom JavaScript functions. This allows for further optimization for specific sets of content or to perform additional tasks without the complexity of understanding the entire workflow and process.
 ----
 ## Installation
 Installation instructions are provided in [INSTALL.md](INSTALL.md)
 
 ----
 ## Using PDFExtract.jar
+
+PDFExtract can be used as a command line tool or as a library wihtin a Java project. PDFExtract processes individual files and can also operate in batch mode to process large lists of files.
 
 ### Command-line PDF Extraction 
 The command-line PDFExtract is contained in the PDFExtract.jar package that may be downloaded and directly executed on all the java-enabled platforms.
@@ -48,7 +55,7 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 - `-O <output_file>` specifies the path to the output HTML file after extraction. 
 - `-B <batch_file>` specifies the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
 - `-L <log_path>` specifies the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
-- `-R <rule_path>` specifies a custom set of rules to process joins between lines. As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+- `-R <rule_path>` specifies a custom set of rules to process joins between lines, identify page headers and footers and perform custom object sequence repairs. See [Runtime JavaScript Extensions](#runtime-javascript-extensions)
 - `-T <number_threads>` specifies the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then the default valur of 1 thread is used.
 - `-LANG <lang>` specifies the language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used. 
     If `DETECT` is specified instead of a language code, then each paragraph will be processed via Language ID tools to determine the language of the paragraph. The detected language will be used for sentence join analysis. (DETECT is not supported in this version)  
@@ -269,7 +276,12 @@ top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999
 ### Font Normalization
 Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
 
-## Joining Lines
+## Runtime JavaScript Extensions
+
+TODO
+ As this can vary considerably between languages, a custom set of rules can be implimented. See [Joining Lines](#joining-lines) for more details. If no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution. If the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.
+
+### Joining Lines
 Lines are handled differently to the rest of the elements. Lines are represented by a `<span class="line"...>
 ` tag and have an additional attribute that provides recommendations on whethere a line is continued on the next line. Normal HTML automatically joins content together on a single line (with wrapping as needed by screen size) unless explictly instructed no to by the use of a `<br>` element or other line breaking elements. PDF files render text in a specified position, but do not retain any line wrapping or joining information. In many cases, rules can be used to determine if a 2 lines should be joined or not. However, there are many ambigious situations where a rule is insufficent. In this version of PDFExtract, we are determining whether to join only with relatively simple rules. Future versions will impliment machine learning approaches to provide intelligence to joining that is able to handle ambigious exceptiions with more accuracy.
 
@@ -277,13 +289,13 @@ Sentence joining is designed to be flexible and for custom rules to be applied. 
 
 - `analyzeJoins(<lines>, <lang>)` - Analyzes the liklihood of the lines in sequence joining to the following line and adding a `joinScore` attribute with a value between 0-100. Each line is delimited by \n and should include the full span tag.
 
-## Repairing Object Sequences
+### Repairing Object Sequences
 Some PDF tools export malformed PDF content in some cases. For example, instead of rendering a word as a single object, a set of letters are rendered as individual objects. There are many exceptions that need to be handled. Common exceptions are handled wihtin the Java code. Additional custom exceptions can be handled in a JavaScript function.
 
 - `repairObjectSequence(<line>)` - Analyzes the line of data and merges content where needed to single words. The input is all objects within the line and the output is the updated line that will be merged back into the page.
 
 
-## Detecting Custom Headers and Footers
+### Detecting Custom Headers and Footers
 While the position of text on a page is helpful in determining headers and footers, it is often difficult to accurately detect a header and footer across languages. Custom logic can be added without recompiling using the `isHeader` and `isFooter` functions. 
 
 TODO: Provide more details and sample rules.
@@ -330,7 +342,7 @@ function isFooter(lines, pageWidth, pageHeight) {
 > These rules can become very complex depending on the language. Many rules are quite simple at a basic level, but depending on the layout of the page (i.e. indentations around a shape), the joins can be difficult. At present it is recommended to use the `top` and `left` attributes to handle indentation related rules and other similar complexities outside of PDFExtract. Future versions will look to use machine learning models to assist in more ambigious join decisions. Future versions will also support the use of LanguageID technology at a line level to support multiple languages in a single PDF document. This is out of scope for the time being.
 
 ## TODO
-The below list is a set of features planned for future
+The below list is a set of features planned for future:
 - Right-to-left languages.
   - This code is untested on right-to-left languages and may need to be modified to support languages such as Arabic.
 - Autodetect language. 
