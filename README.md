@@ -8,19 +8,26 @@
   - [Library PDF Extraction](#library-pdf-extraction)
 - [How It Works](#how-it-works)
   - [Basic Process](#basic-process)
-  - [Words](#words)
-  - [Lines](#lines)
-  - [Paragraphs](#paragraphs)
-  - [Columns](#columns)
-  - [Pages](#pages)
+    - [Processing Sequence](#processing-sequence)
+    - [Pages](#pages)
+    - [Words](#words)
+    - [Lines](#lines)
+    - [Paragraphs](#paragraphs)
+    - [Columns](#columns)
+    - [Sort Objects](#sort-objects)
+    - [JavaScript Extensions](#javascript-extensions)
+    - [Font Normalization](#font-normalization)
 - [Document Format](#document-format)
   - [Alignment Optimized HTML](#alignment-optimized-html)
   - [ID Formats](#id-formats)
   - [Classes](#classes)
   - [Coordinates](#coordinates)
-  - [Font Normalization](#font-normalization)
+- [Runtime JavaScript Extensions]  
   - [Joining Lines](#joining-lines)
   - [Repairing Object Sequences](#repairing-object-sequences)
+  - [Detecting Custom Headers and Footers](#detecting-custom-headers-and-footers)
+  - [Sample JavaScript Template](#sample-javascript-template)
+- [TODO](#todo)
 - [FAQ](#FAQ)
 
 ----
@@ -210,12 +217,12 @@ Objects in a PDF are not necessarily in sequence. As rendering is using X and Y 
 #### JavaScript Extensions
 Allows for custom rules to process, repair or identify page elements such as headers, footers or line joins. See [Runtime JavaScript Extensions](#runtime-javascript-extensions)
 
-### Font Normalization
+#### Font Normalization
 When comparing pages for alignment, the fonts may be totally different. This approach normalizes the fonts to names that are not language specific. 
 
 The dominant font is considered the default for the document, so removed. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font. 
 
-## Output HTML Format ##
+## Document Format ##
 Once the various page regions are defined as described above, the objects that fall within the each region can be extracted into a normalized HTML format. The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
 
 ### Alignment Optimized HTML
