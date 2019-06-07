@@ -1,7 +1,7 @@
 # PDFExtract Installation
 
 1. Download / Close the project from Github
-   1. Go into directory that you want to clone the repository to
+   1. Go into directory that you want to clone the repository to and execute the `git clone` command.
 ```sh
 cd /gitproject
 git clone https://github.com/dionwiggins/dwpdfextract.git
