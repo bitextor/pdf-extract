@@ -10,7 +10,7 @@ git clone https://github.com/dionwiggins/pdfextract.git
    3. You can now run the binary in the `/gitproject/pdf-extract/runnable-jar` using the instructions in [README.md](#command-line-pdf-extraction)
 
 2. Developers
-   1.Import the projects into Eclipse (for develper
+   1. Import the projects into Eclipse (for develper
    2. In Eclipse, go to File > Import > General and select Existing Projects into Eclipse.
    3. Next to “Select root directory,” browse to the cloned repository on your computer where you downloaded all the files from Github. Then select Open and browse to `/gitproject/pdfextract/PDFExtract`.
 
