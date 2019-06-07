@@ -12,9 +12,6 @@ public class Main {
 
 			Common common = new Common(); 
 			
-			args = new String[] { "-B", "/home/administrator/Work/LSTools/PDFExtract/runable/FileTest/test.tab", "-T", "10", "-L", "debug.log", "-D" };
-			//args = new String[] { "-I", "/home/administrator/Work/LSTools/PDFExtract/runable/FileTest/sample.pdf", "-D", "-O", "/home/administrator/Work/LSTools/PDFExtract/runable/FileTest/sample.html", "-T", "10"};
-
 			if (args == null || args.length == 0 || args[0].equals("--help")) {
 
 				/**
