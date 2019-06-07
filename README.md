@@ -143,12 +143,21 @@ All content in the HTML output is sorted by the position it appears on the page 
 
 >Note: This will likely not work on languages that are rendered right-to-left and has not been tested at present for such languages.
 
-
 ![alt text](Example1.png "Example 1")
 
 ### Basic Process
-#### Sort and Clean Objects
-Objects in a PDF are not necessarily in sequence. As rendering is using X and Y coordinates, they can be in any order and still look correct visually. For example, a page footer could be in the middle of the objects in sequence, not the last set of objects as they would appear visually. The first task is to sort the objects by X and Y coordinates at a page by page level. Once sorted, off-page objects are filtered and removed.
+**Processing Sequence**
+1. Group objects by Page
+2. Process Words
+3. Process Lines
+4. Process Paragraphs
+5. Process Columns
+6. Sort Page contents
+7. Process Runtime JavaScript Extensions
+8. Font Normalization
+
+#### Pages
+Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. Processing is grouped by page.
 
 #### Words
 Words are first identified and repaired. PDF files will usually have an entire word in one object, but sometimes the PDF creation tool will create words using multiple objects. In some cases, as granular as 1 object per letter. Visually in a PDF this looks fine, however, in order to export the text into a useable format for processing, the objects must be combined into words.  
@@ -167,12 +176,18 @@ Lines may have different left and right offsets such as for indentation and wrap
 ![alt text](Paragraph.png)
  
 #### Columns
-Columns are calculated by analyzing the vertical path of paragraphs to determine in they are in a column. Generally, paragraphs will have similar widths and if there is a second column, then it will be detectable by looking at the X positions of paragraphs for similarity. 
+Columns are calculated by analyzing the vertical path of paragraphs to determine in they are in a column. Generally, paragraphs will have similar widths and if there is a second column, then it will be detectable by looking at the X positions of paragraphs for similarity. There are many 
 
 ![alt text](Column.jpg)
 
-### Pages
-Pages are already defined by the orignal HTML DOM after the initial extraction from PDF. 
+#### Sort Objects
+Objects in a PDF are not necessarily in sequence. As rendering is using X and Y coordinates, they can be in any order and still look correct visually. For example, a page footer could be in the middle of the objects in sequence, not the last set of objects as they would appear visually. The first task is to sort the objects by X and Y coordinates at a page by page level. 
+
+#### JavaScript Extensions
+Allows for custom rules to process, repair or identify page elements such as headers, footers or line joins. See [Runtime JavaScript Extensions](#runtime-javascript-extensions)
+
+### Font Normalization
+Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
 
 ## Output HTML Format ##
 Once the various page regions are defined as described above, the objects that fall within the each region can be extracted into a normalized HTML format. The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
@@ -305,9 +320,6 @@ Example
 ```
 top:168.80069pt;left:342.9921pt;height:65.26792899999998pt;width:279.59444899999994pt;
 ```
-### Font Normalization
-Fonts within the document are analyzed. The dominant font is removed and considered to be set globally by default. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font.
-
 ## Runtime JavaScript Extensions
 
 TODO
@@ -319,23 +331,23 @@ Lines are handled differently to the rest of the elements. Lines are represented
 
 Sentence joining is designed to be flexible and for custom rules to be applied. PDFExtract impliments Oracle's Nashorn JavaScript engine for custom rules that handle sentence joining without the need to complie the rules into the code. 
 
-- `analyzeJoins(<lines>, <lang>)` - Analyzes the liklihood of the lines in sequence joining to the following line and adding a `joinScore` attribute with a value between 0-100. Each line is delimited by \n and should include the full span tag.
+- `analyzeJoins(<lines>, <lang>)` - Analyzes the liklihood of the lines in sequence joining to the following line and adding a `joinScore` attribute with a value between 0-100. Each line is delimited by \n and should include the full span tag. Use the `lang` parameter to determine language specific rules.
 
 ### Repairing Object Sequences
 Some PDF tools export malformed PDF content in some cases. For example, instead of rendering a word as a single object, a set of letters are rendered as individual objects. There are many exceptions that need to be handled. Common exceptions are handled wihtin the Java code. Additional custom exceptions can be handled in a JavaScript function.
 
 - `repairObjectSequence(<line>)` - Analyzes the line of data and merges content where needed to single words. The input is all objects within the line and the output is the updated line that will be merged back into the page.
 
-
 ### Detecting Custom Headers and Footers
 While the position of text on a page is helpful in determining headers and footers, it is often difficult to accurately detect a header and footer across languages. Custom logic can be added without recompiling using the `isHeader` and `isFooter` functions. 
 
-TODO: Provide more details and sample rules.
+### Sample JavaScript Template
 
 ```javascript
-//Analyzes the lines in a chunk/paragraph to deterine if a line should be joined to the line that follows it.
+//Analyzes the lines in a paragraph to deterine if a line should be joined to the line that follows it.
 function analyzeJoins(lines, lang) {
-	
+  //Calculations can be made to determine the liklihood of a join of the current line to the next line. Simple rules such as matching lower case end and starts could be applied for some languages. 
+  //This could also be handled externally rather than in this process.
   //<span id="page1c1p1l1" joinScore="100.00" style="top:0px;left:0px;width:0px;height:0px;">
   switch(lang.toLower()) {
     case "en":
@@ -347,22 +359,25 @@ function analyzeJoins(lines, lang) {
     default:
       // code block
    }
+   //Common rules
+   //code block
    return lines;
 }
 
 //Adjusts the line to repair poorly rendered objects that may be split, but are one.
 function repairObjectSequence(line) {
-
+   //Different PDF creation tools may create objects that are invalid. Custom handlers can be added here.
+   // code block
    return line;
 }
 
-//Custom detection that would identify a section as a header. This is only called if internal logic has not already identified the content as a header and is within the first 5 paragraphs on the page.
+//Custom detection that would identify a section as a header. 
 function isHeader(lines, pageWidth, pageHeight) {
    //code block
    return false;
 }
 
-//Custom detection that would identify a section as a footer. This is only called if internal logic has not already identified the content as a footer and is within the last 5 paragraphs on the page.
+//Custom detection that would identify a section as a footer. 
 function isFooter(lines, pageWidth, pageHeight) {
   //code block
   return false;
