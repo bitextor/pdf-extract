@@ -4,7 +4,7 @@
    1. Go into directory that you want to clone the repository to and execute the `git clone` command.
 ```sh
 cd /gitproject
-git clone https://github.com/dionwiggins/dwpdfextract.git
+git clone https://github.com/dionwiggins/pdfextract.git
 ```
    2. A project folder will be created `/gitproject/pdf-extract` with the project files
    3. You can now run the binary in the `/gitproject/pdf-extract/runnable-jar` using the instructions in [README.md](#command-line-pdf-extraction)
@@ -12,7 +12,7 @@ git clone https://github.com/dionwiggins/dwpdfextract.git
 2. Developers
    1.Import the projects into Eclipse (for develper
    2. In Eclipse, go to File > Import > General and select Existing Projects into Eclipse.
-   3. Next to “Select root directory,” browse to the cloned repository on your computer where you downloaded all the files from Github. Then select Open and browse to `/gitproject/dwpdfextract/PDFExtract`.
+   3. Next to “Select root directory,” browse to the cloned repository on your computer where you downloaded all the files from Github. Then select Open and browse to `/gitproject/pdfextract/PDFExtract`.
 
 # Dependancies
 All dependancies are included in the project folder.
