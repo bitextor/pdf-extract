@@ -22,13 +22,13 @@
   - [ID Formats](#id-formats)
   - [Classes](#classes)
   - [Coordinates](#coordinates)
-- [Runtime JavaScript Extensions]  
+- [Runtime JavaScript Extensions](#runtime-javascript-extensions)
   - [Joining Lines](#joining-lines)
   - [Repairing Object Sequences](#repairing-object-sequences)
   - [Detecting Custom Headers and Footers](#detecting-custom-headers-and-footers)
   - [Sample JavaScript Template](#sample-javascript-template)
 - [TODO](#todo)
-- [FAQ](#FAQ)
+- [FAQ](#faq)
 
 ----
 ## Introduction
