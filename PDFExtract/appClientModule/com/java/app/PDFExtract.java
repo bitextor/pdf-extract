@@ -221,6 +221,8 @@ public class PDFExtract {
 			 */
 			try {
 				htmlBuffer = convertPdfToHtml(inputFile);
+				
+				common.WriteFile("/home/administrator/Work/LSTools/PDFExtract/Script/org.html", htmlBuffer.toString());
 			}catch(Exception e) {
 				throw e;
 			}
@@ -935,13 +937,21 @@ public class PDFExtract {
                     }
                 }
                 
-                 if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+                 /*if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
                  		|| (v_next == null || (nextTop > lineHeight*5))
                  		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
-                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.FontSize) > 20))
+                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color))) // && Double.valueOf(v.FontSize) > 20))
                  		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
                  		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
                  		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                 */
+                if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+                 		|| (v_next == null || (nextTop > lineHeight*5))
+                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Math.abs(Double.valueOf(v.Height) - Double.valueOf(v_next.Height)) > 10))
+                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.Height) > 20))
+                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
+                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.Height) > 20 && Double.valueOf(v_next.Height) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
+                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.Height) <= 20 && Double.valueOf(v_next.Height) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
                  
                 	) {
                 	
@@ -1512,7 +1522,7 @@ public class PDFExtract {
 							 for (Float textInLineKey : listTextInLine) {
 								 HTMLObject.TextObject oText = hashTextInLine.get(textInLineKey);
 								 String text = oText.text;
-				    			if (Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
+				    			if (oText.fontsize < oBolderLine.height && Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
 				    				
 				    				//<sup>
 				    				if (Math.abs(oText.top - oBolderLine.top) < 1) {
