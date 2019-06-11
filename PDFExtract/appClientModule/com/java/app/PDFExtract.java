@@ -5,7 +5,9 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -217,12 +219,8 @@ public class PDFExtract {
 			/**
 			 * Call function to convert PDF to HTML
 			 */
-			String outputHtml = outputName + ".org." + outputExt;
-			if (!common.IsEmpty(outputPath)) {
-				outputHtml = common.combine(outputPath, outputHtml);
-			}
 			try {
-				htmlBuffer = convertPdfToHtml(inputFile, outputHtml);
+				htmlBuffer = convertPdfToHtml(inputFile);
 			}catch(Exception e) {
 				throw e;
 			}
@@ -448,7 +446,7 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-    private StringBuffer convertPdfToHtml(String inputFile, String outputFile) throws Exception {
+    private StringBuffer convertPdfToHtml(String inputFile) throws Exception {
     	PDDocument pdf = null;
 		StringWriter output = null;
 		try {
@@ -460,6 +458,7 @@ public class PDFExtract {
             PDFDomTree parser = new PDFDomTree(config);
             output = new StringWriter();
             parser.writeText(pdf, output);
+
             return output.getBuffer();
 		}catch(Exception e) {
 			throw new Exception("Convert pdf to html fail.: " + e.getMessage());
@@ -678,6 +677,8 @@ public class PDFExtract {
         double lineLeft = 0;
         double lineHeight = 0;
         double lineWidth = 0;
+        double lineRight = 0;
+        double lineBottom = 0;
         int round = 0;
         int columnCount = 0;
         double nextTop = 0;
@@ -697,11 +698,21 @@ public class PDFExtract {
         LinkedHashMap<Integer, ArrayList<String>> model = new LinkedHashMap<Integer, ArrayList<String>>();
         ArrayList<String> objm = new ArrayList<String>();
         //line
-        ArrayList<Double> objline = new ArrayList<Double>();
-        ArrayList<Double> objlineleft = new ArrayList<Double>();
+        ArrayList<Double> objcol = new ArrayList<Double>();
+        ArrayList<Double> objcolleft = new ArrayList<Double>();
+        ArrayList<Double> objcoltop = new ArrayList<Double>();
+        ArrayList<Double> objcolright = new ArrayList<Double>();
+        ArrayList<Double> objcolbottom = new ArrayList<Double>();
+        //
         ArrayList<Double> objpara = new ArrayList<Double>();
         ArrayList<Double> objparaleft = new ArrayList<Double>();
-        
+        ArrayList<Double> objpararight = new ArrayList<Double>();
+        ArrayList<Double> objparatop = new ArrayList<Double>();
+        ArrayList<Double> objparabottom = new ArrayList<Double>();
+        //
+        ArrayList<Double> objlinetop = new ArrayList<Double>();
+        ArrayList<Double> objlinebottom = new ArrayList<Double>();
+
         for (int key : hList.keySet() ) {
             //
         	List<HtmlTagValues> tagList = hList.get(key);
@@ -720,7 +731,22 @@ public class PDFExtract {
                     lineTop = Double.valueOf(v.Top);
                     lineLeft = Double.valueOf(v.Left);
                     lineHeight = Double.valueOf(v.Height);
+                    lineRight = Double.valueOf(v.Left) + Double.valueOf(v.Width);
+                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
                 }
+                
+                objlinebottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
+                objlinetop.add(Double.valueOf(v.Top));
+                //
+                objcolright.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
+                objcolbottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
+                objcolleft.add(Double.valueOf(v.Left));
+                objcoltop.add(Double.valueOf(v.Top));
+                //
+                objpararight.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
+                objparatop.add(Double.valueOf(v.Top));
+                objparabottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
+                objparaleft.add(Double.valueOf(v.Left));
                 //
                 if (v_pre != null) {
                     previousTop = Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
@@ -728,7 +754,7 @@ public class PDFExtract {
                     if (previousTop < 2) previousTop = 0;
                 }
                 if (v_next != null) {
-                    nextTop = Math.abs(Double.valueOf(v.Top) - Double.valueOf(v_next.Top));
+                	nextTop = Math.abs(Double.valueOf(v.Top) - Double.valueOf(v_next.Top));
                     nextLeft = Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left));
                     
                     if (nextTop > 0) {
@@ -740,34 +766,58 @@ public class PDFExtract {
                 }
 
                 //for line
-                if (v_pre != null && previousTop > 0) {
+                if (v_pre != null && previousTop > 0 
+                		&& Math.abs(Double.valueOf(v_pre.Top) + Double.valueOf(v_pre.Height) - (Double.valueOf(v.Top) + Double.valueOf(v.Height))) > 2) {
                     lineTop = Double.valueOf(v.Top);
                     lineLeft = Double.valueOf(v.Left);
                     lineHeight = Double.valueOf(v.Height);
+                    lineRight = Double.valueOf(v.Left) + Double.valueOf(v.Width);
+                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
                     //
                 }
-                if (v_next != null && nextTop == 0) {
-                	if (v_next != null) {
-                		double gap =  Math.abs(Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left)) - Double.valueOf(v.Width));
-                		lineWidth += (Double.valueOf(v.Width) + gap);
 
-                		double minLeft = Math.min(Double.valueOf(v.Left), Double.valueOf(v_next.Left));
-                		if (lineLeft > minLeft) {
-                			lineWidth -= (lineLeft - minLeft); 
-                		}
-                		lineLeft = Math.min(Math.min(lineLeft, Double.valueOf(v.Left)), Double.valueOf(v_next.Left));
-                	}
-                    
+                
+                if ((v_next != null && nextTop == 0) ||
+                	(v_next != null && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < 2)){
+
+                	double gap =  Math.abs(Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left)) - Double.valueOf(v.Width));
+            		lineWidth += (Double.valueOf(v.Width) + gap);
+
+            		double minLeft = Math.min(Double.valueOf(v.Left), Double.valueOf(v_next.Left));
+            		if (lineLeft > minLeft) {
+            			lineWidth -= (lineLeft - minLeft); 
+            		}
+            		lineLeft = Math.min(Math.min(lineLeft, Double.valueOf(v.Left)), Double.valueOf(v_next.Left));
+                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
+
                 } else {
+                	
                     lineWidth += Double.valueOf(v.Width);
-                    objm.add(getDIV(lineTop, lineLeft, lineHeight, lineWidth, "blue"));
+                    
+                    double xheight = lineHeight, minlinetop = lineTop; 
+                    if (objlinebottom != null && objlinebottom.size() > 0 && objlinetop != null && objlinetop.size() > 0) {
+                    	minlinetop = Collections.min(objlinetop);
+                    	double maxlinebottom = Collections.max(objlinebottom);
+                    	xheight = maxlinebottom - minlinetop + 1;
+                    } 
+                    
+                    objm.add(getDIV(minlinetop, lineLeft, xheight, lineWidth, "blue"));
+                    
+                    objlinetop.removeAll(objlinetop);
+                    objlinebottom.removeAll(objlinebottom);
 
                     //for column
-                    if (objlineleft != null && objlineleft.size() > 0 && lineLeft > Collections.min(objlineleft)) {
-                        double dLineWidth = (lineLeft - Collections.min(objlineleft) + 1) + lineWidth;
-                        objline.add(dLineWidth);
+                    if (objcolleft != null && objcolleft.size() > 0 && lineLeft > Collections.min(objcolleft)) {
+                        double dLineWidth = (lineLeft - Collections.min(objcolleft) + 1) + lineWidth;
+                        objcol.add(dLineWidth);
                     }else {
-                    	objline.add(lineWidth);
+                    	objcol.add(lineWidth);
+                    }
+                    if (objcoltop != null && objcoltop.size() > 0 && lineTop < Collections.min(objcoltop)) {
+                    	double dLineTop = (lineTop - Collections.min(objcoltop) + 1) + lineTop;
+                    	objcoltop.add(dLineTop);
+                    }else {
+                    	objcoltop.add(lineTop);
                     }
                     
                     //for paragraph
@@ -777,10 +827,9 @@ public class PDFExtract {
                     }else {
                     	objpara.add(lineWidth);	
                     }
-                    
-                    objlineleft.add(lineLeft);
-                    objparaleft.add(lineLeft);
 
+                    
+                    
                     lineWidth = 0;
                     //
                 }
@@ -804,23 +853,61 @@ public class PDFExtract {
                     	paraLeft = Collections.min(objparaleft);
                     }
                     if (v_pre != null) {
-                    	paraHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
+                    	paraHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top)) + 1;
                     }
                 }
                 //
                 //
-                if ((nextTop > 0 && gapLine > Double.valueOf(v.Height)/2)
-                	|| (v_next == null || (nextTop > Double.valueOf(v.Height)/2 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold")))
+                if (((nextTop > 0 && gapLine > Double.valueOf(v.Height)/2) && nextTop > lineHeight)
+            		|| (v_next == null || (nextTop > Double.valueOf(v.Height)/2 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold")))
+            		|| (v_next == null || (nextTop > 0 && gapLine > Double.valueOf(v.Height)/2 && nextTop > lineHeight && Double.valueOf(v_next.Left) > lineLeft))
             		) {
 
                     if (v_para != null) {
-                    	paraWidth = Collections.max(objpara);
+                    	//
+                    	if (objpara != null && objpara.size() > 0) {
+                    		paraWidth = Collections.max(objpara);
+                    	}else {
+                    		paraWidth = lineWidth;
+                    	}
                     	if (paraWidth == 0.0) paraWidth = Double.valueOf(v_para.Width);
-                    	paraHeight = Math.abs(Double.valueOf(v_para.Top) - Double.valueOf(v.Top)) + Double.valueOf(v.Height);
+                    	
+
+                    	double paraRight = 0;
+                    	if (objpararight != null && objpararight.size() > 0) {
+                    		paraRight = Collections.max(objpararight);	
+                    	}else {
+                    		paraRight = lineRight;
+                    	}
+                    	paraWidth = paraRight - paraLeft + 1; 
+                    	
+
+                    	double paraBottom = 0;
+                    	if (objparabottom != null && objparabottom.size() > 0) {
+                    		paraBottom = Collections.max(objparabottom);	
+                    	}else {
+                    		paraBottom = lineBottom;
+                    	}
+                    	if (objparatop != null && objparatop.size() > 0) {
+                    		paraTop = Collections.min(objparatop);	
+                    	}
+                    	paraHeight = paraBottom - paraTop + 1; 
+                    	
 	                    objm.add(getDIV(paraTop, paraLeft, paraHeight, paraWidth, "green"));
                     }
 
-                    clearPara = true;
+                    objpara.removeAll(objpara);
+                    objparaleft.removeAll(objparaleft);
+                    objpararight.removeAll(objpararight);
+                    objparatop.removeAll(objparatop);
+                    objparabottom.removeAll(objparabottom);
+                    paraTop = 0;
+                    paraLeft = 0;
+                    paraWidth = 0;
+                    paraHeight = 0;
+                    paraRound = 0;
+                    paraCount = 0;
+                    
                 } else {
                     paraCount += 1;
                 }
@@ -834,39 +921,65 @@ public class PDFExtract {
                     round = 1;
                 } //else compare current columnwidth with previous columnwidth and increase column height
                 else {
-                    if (objline.size() == 0) {
+                    if (objcol.size() == 0) {
                         columnWidth = lineWidth;
                         columnLeft = lineLeft;
+                        columnTop = lineTop;
                     } else {
-                        columnWidth = Collections.max(objline);
-                        columnLeft = Collections.min(objlineleft);
-                        //columnWidth = Math.max(columnWidth, (lineLeft - columnLeft) + lineWidth);
+                        columnWidth = Collections.max(objcol);
+                        columnLeft = Collections.min(objcolleft);
+                        columnTop = Collections.min(objcoltop);
                     }
                     if (v_pre != null) {
                     	columnHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
                     }
                 }
                 
-                if ((nextTop > 0 && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
-                		|| (v_next == null || (nextTop > lineHeight*5))
-                		|| (v_next == null || (nextTop > lineHeight && objline != null && objline.size() > 0 && nextLeft > Collections.max(objline) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
-                		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.FontSize) > 20))
-                		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
-                		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
-                		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                 if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+                 		|| (v_next == null || (nextTop > lineHeight*5))
+                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
+                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.FontSize) > 20))
+                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
+                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                 
                 	) {
                 	
                     if (v_column != null) {
-                    	if (objline != null && objline.size() > 0) {
-                    		columnWidth = Collections.max(objline);	
+                    	if (objcol != null && objcol.size() > 0) {
+                    		columnWidth = Collections.max(objcol);	
                     	}else {
                     		columnWidth = lineWidth;
                     	}
-                        columnHeight = Math.abs(Double.valueOf(v_column.Top) - Double.valueOf(v.Top)) + Double.valueOf(v.Height);
+                    	if (objcoltop != null && objcoltop.size() > 0) {
+                    		columnTop = Collections.min(objcoltop);	
+                    	}else {
+                    		columnTop = lineTop;
+                    	}
+                    	
+                    	double columnRight = 0;
+                    	if (objcolright != null && objcolright.size() > 0) {
+                    		columnRight = Collections.max(objcolright);	
+                    	}else {
+                    		columnRight = lineRight;
+                    	}
+                    	columnWidth = columnRight - columnLeft + 1;
+
+                    	double columnBottom = 0;
+                    	if (objcolbottom != null && objcolbottom.size() > 0) {
+                    		columnBottom = Collections.max(objcolbottom);	
+                    	}else {
+                    		columnBottom = lineBottom;
+                    	}
+                    	columnHeight = columnBottom - columnTop + 1; 
+                    	
                         objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
                     }
-                    objline.removeAll(objline);
-                    objlineleft.removeAll(objlineleft);
+                    objcol.removeAll(objcol);
+                    objcolleft.removeAll(objcolleft);
+                    objcoltop.removeAll(objcoltop);
+                    objcolright.removeAll(objcolright);
+                    objcolbottom.removeAll(objcolbottom);
                     columnTop = 0;
                     columnLeft = 0;
                     columnWidth = 0;
@@ -875,46 +988,94 @@ public class PDFExtract {
                     lineLeft = 0;
                     lineWidth = 0;
                     lineHeight = 0;
+                    lineRight = 0;
                     round = 0;
                     columnCount = 0;
                 } else {
                     columnCount += 1;
                 }
                 
-                if (clearPara) {
-
-                    objpara.removeAll(objpara);
-                    objparaleft.removeAll(objparaleft);
-                    paraTop = 0;
-                    paraLeft = 0;
-                    paraWidth = 0;
-                    paraHeight = 0;
-                    paraRound = 0;
-                    paraCount = 0;
-                    
-                    clearPara = false;
-                }
-
                 if (i == len - 1) {
                 	
                 	if (v_next != null && lineHeight > 1) {
                 		lineWidth += Double.valueOf(v_next.Width);
                 		paraWidth += lineWidth;
                 		columnWidth += lineWidth;
-                        objm.add(getDIV(lineTop, lineLeft, lineHeight, lineWidth, "blue"));
+
+                        
+                        double xheight = lineHeight, minlinetop = lineTop; 
+                        if (objlinebottom != null && objlinebottom.size() > 0 && objlinetop != null && objlinetop.size() > 0) {
+                        	minlinetop = Collections.min(objlinetop);
+                        	double maxlinebottom = Collections.max(objlinebottom);
+                        	xheight = maxlinebottom - minlinetop + 1;
+                        } 
+                        
+                        objm.add(getDIV(minlinetop, lineLeft, xheight, lineWidth, "blue"));
                 	}
                     
                     if (paraRound > 0) {
 	                    if (v_para != null) {
+	                    	if (objpara != null && objpara.size() > 0) {
+	                    		paraWidth = Collections.max(objpara);
+	                    	}else {
+	                    		paraWidth = lineWidth;
+	                    	}
 	                    	if (paraWidth == 0.0) paraWidth = Double.valueOf(v_para.Width);
-	                    	paraHeight = Math.abs(Double.valueOf(v_para.Top) - Double.valueOf(v.Top)) + Double.valueOf(v.Height);
+	                    	
+
+	                    	double paraRight = 0;
+	                    	if (objpararight != null && objpararight.size() > 0) {
+	                    		paraRight = Collections.max(objpararight);	
+	                    	}else {
+	                    		paraRight = lineRight;
+	                    	}
+	                    	paraWidth = paraRight - paraLeft + 1; 
+	                    	
+
+	                    	double paraBottom = 0;
+	                    	if (objparabottom != null && objparabottom.size() > 0) {
+	                    		paraBottom = Collections.max(objparabottom);	
+	                    	}else {
+	                    		paraBottom = lineBottom;
+	                    	}
+	                    	if (objparatop != null && objparatop.size() > 0) {
+	                    		paraTop = Collections.min(objparatop);	
+	                    	}
+	                    	paraHeight = paraBottom - paraTop + 1; 
+	                    	
 		                    objm.add(getDIV(paraTop, paraLeft, paraHeight, paraWidth, "green"));
 	                    }
                     }
                     
                     if (round > 0) {
                         if (v_column != null) {
-                        	columnHeight = Math.abs(Double.valueOf(v_column.Top) - Double.valueOf(v.Top)) + Double.valueOf(v.Height);
+                        	if (objcol != null && objcol.size() > 0) {
+                        		columnWidth = Collections.max(objcol);	
+                        	}else {
+                        		columnWidth = lineWidth;
+                        	}
+                        	if (objcoltop != null && objcoltop.size() > 0) {
+                        		columnTop = Collections.min(objcoltop);	
+                        	}else {
+                        		columnTop = lineTop;
+                        	}
+                        	
+                        	double columnRight = 0;
+                        	if (objcolright != null && objcolright.size() > 0) {
+                        		columnRight = Collections.max(objcolright);	
+                        	}else {
+                        		columnRight = lineRight;
+                        	}
+                        	columnWidth = columnRight - columnLeft + 1;
+
+                        	double columnBottom = 0;
+                        	if (objcolbottom != null && objcolbottom.size() > 0) {
+                        		columnBottom = Collections.max(objcolbottom);	
+                        	}else {
+                        		columnBottom = lineBottom;
+                        	}
+                        	columnHeight = columnBottom - columnTop + 1; 
+                        	
                             objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
                         }
                     }
@@ -922,8 +1083,11 @@ public class PDFExtract {
                     model.put(BOX, objm);
                     BOX++;
                     objm = new ArrayList<String>();
-                    objline.removeAll(objline);
-                    objlineleft.removeAll(objlineleft);
+                    objcol.removeAll(objcol);
+                    objcolleft.removeAll(objcolleft);
+                    objcoltop.removeAll(objcoltop);
+                    objcolright.removeAll(objcolright);
+                    objcolbottom.removeAll(objcolbottom);
                     columnTop = 0;
                     columnLeft = 0;
                     columnWidth = 0;
@@ -936,12 +1100,19 @@ public class PDFExtract {
                     paraCount = 0;
                     objpara.removeAll(objpara);
                     objparaleft.removeAll(objparaleft);
+                    objparatop.removeAll(objparatop);
+                    objparabottom.removeAll(objparabottom);
                     lineTop = 0;
                     lineLeft = 0;
                     lineWidth = 0;
                     lineHeight = 0;
+                    lineRight = 0;
+                    lineBottom = 0;
                     round = 0;
                     columnCount = 0;
+                    objlinetop.removeAll(objlinetop);
+                    objlinebottom.removeAll(objlinebottom);
+
                 }
             }
         }
@@ -1162,7 +1333,7 @@ public class PDFExtract {
 		Hashtable<Float,Hashtable<Integer,HTMLObject.TextObject>> hashText = new  Hashtable<Float,Hashtable<Integer,HTMLObject.TextObject>>();
 		Hashtable<String,Integer> _hashClasses = hashClasses.get();
 		if (_hashClasses == null) _hashClasses = new Hashtable<String,Integer>();
-		
+
 		// Get Border
 		Pattern pBorder = Pattern.compile("<div[ ]class=\"p\"[ ]style=\"border:[ ]1pt[ ]solid;top:(.*?)pt;left:(.*?)pt;height:(.*?)pt;width:(.*?)pt[^<>]+(red|green|blue);\"></div>", Pattern.MULTILINE);
 		Matcher mBorder = pBorder.matcher(sContent);
@@ -1189,10 +1360,11 @@ public class PDFExtract {
 		{
 			hashParagraph = (Hashtable<Key, BolderObject>) hashColumn.clone();
 		}
-		
+
 		// Get Text
 		//top:709.0735pt;left:135.07628pt;line-height:8.099976pt;font-family:Times;font-size:8.01pt;word-spacing:3.354201pt;color:#323232;width:39.49199pt;
-		Pattern pText = Pattern.compile("<div[ ]class=\"p\"[ ]id=\".*?\"[ ]style=\"top:(?<top>.*?)pt;left:(?<left>.*?)pt;line-height:(?<lineheight>.*?)pt;font-family:(?<fontfamily>.*?);font-size:(?<fontsize>.*?)pt;(font-weight:(?<fontweight>.*?);)?(letter-spacing:(?<letterspacing>.*?);)?(font-style:(?<fontstyle>.*?);)?(word-spacing:(?<wordspacing>.*?)pt;)?(color:(?<color>.*?);)?width:(?<width>.*?)pt;\">(?<text>.*?)</div>", Pattern.MULTILINE);
+		//Pattern pText = Pattern.compile("<div[ ]class=\"p\"[ ]id=\".*?\"[ ]style=\"top:(?<top>.*?)pt;left:(?<left>.*?)pt;line-height:(?<lineheight>.*?)pt;font-family:(?<fontfamily>.*?);font-size:(?<fontsize>.*?)pt;(font-weight:(?<fontweight>.*?);)?(letter-spacing:(?<letterspacing>.*?);)?(font-style:(?<fontstyle>.*?);)?(word-spacing:(?<wordspacing>.*?)pt;)?(color:(?<color>.*?);)?width:(?<width>.*?)pt;\">(?<text>.*?)</div>", Pattern.MULTILINE);
+		Pattern pText = Pattern.compile("<div[ ]class=\"p\"[ ]id=\".*?\"[ ]style=\"top:(?<top>.*?)pt;left:(?<left>.*?)pt;line-height:(?<lineheight>.*?)pt;font-family:(?<fontfamily>.*?);font-size:(?<fontsize>[^;]*?)pt;(font-weight:(?<fontweight>.*?);)?(letter-spacing:(?<letterspacing>.*?);)?(font-style:(?<fontstyle>.*?);)?(word-spacing:(?<wordspacing>.*?)pt;)?(color:(?<color>.*?);)?width:(?<width>.*?)pt;\">(?<text>.*?)</div>", Pattern.MULTILINE);
 		Matcher mText = pText.matcher(sContent);
 		int iSeq = 0;
 		while (mText.find()) {
@@ -1201,8 +1373,10 @@ public class PDFExtract {
 			oText.top = RoundNumber(mText.group("top"));
 			oText.left = RoundNumber(mText.group("left"));
 			oText.lineheight = RoundNumber(mText.group("lineheight"));
+			oText.fontsize = RoundNumber(mText.group("fontsize"));
 			oText.right = oText.left + oText.width;
 			oText.bottom = oText.top + oText.lineheight;
+			
 			String sfontfamily = mText.group("fontfamily");
 			String sfontsize =  mText.group("fontsize");
 			String sfontweight = "";
@@ -1224,7 +1398,7 @@ public class PDFExtract {
 			*/
 			oText.width = Float.parseFloat(mText.group("width"));
 			oText.text = mText.group("text");
-			
+
 			//get font style
 			String sFontStyle = "font-family:" + sfontfamily + ";" + "font-size:" + sfontsize + "pt;";			
 			if (mText.group("fontweight") != null)
@@ -1293,7 +1467,7 @@ public class PDFExtract {
 				    	if (CheckIsBoxInside(oBolderParagraph,oBolderLine))
 				    	{
 				    		
-				    		Hashtable<Float,String> hashTextInLine = new  Hashtable<Float,String>();
+				    		Hashtable<Float,HTMLObject.TextObject> hashTextInLine = new  Hashtable<Float,HTMLObject.TextObject>();
 				    		
 					    	//System.out.println("\tline"+iLineID+"==>" + lineKey.x + ":"+lineKey.y);
 					    	
@@ -1302,19 +1476,32 @@ public class PDFExtract {
 
 						    String sLine = "";
 						    String sStyle = "";
+
 						    for (Float textTop : listText) {
 						    	if (textTop >= oBolderLine.top && textTop <= oBolderLine.bottom)
 						    	{
 							    	Hashtable<Integer,HTMLObject.TextObject> hashTextMember = hashText.get(textTop);		    	
 							    	List<Integer> listTextMember = new ArrayList<Integer>(hashTextMember.keySet());
 								    Collections.sort(listTextMember);
+								    
 								    for (Integer textMemberTop : listTextMember) {
+								    	
 								    	HTMLObject.TextObject oTextMemberObject = hashTextMember.get(textMemberTop);
-								    	if (oTextMemberObject.left >= oBolderLine.left && oTextMemberObject.right <= oBolderLine.right)
+								    	
+								    	
+								    	if (oTextMemberObject.bottom <= oBolderLine.bottom && oTextMemberObject.left >= oBolderLine.left && oTextMemberObject.right <= oBolderLine.right)
 								    	{
 								    		sStyle = oTextMemberObject.style;
-								    		if (!hashTextInLine.containsKey(oTextMemberObject.left))
-								    			hashTextInLine.put(oTextMemberObject.left, oTextMemberObject.text);								    		
+								    		if (!hashTextInLine.containsKey(oTextMemberObject.left)) {
+								    			hashTextInLine.put(oTextMemberObject.left, oTextMemberObject);
+								    			
+								    			if (oTextMemberObject.text.indexOf('\uFFFD') > -1) {
+								    				if (oBolderLine.height > (oTextMemberObject.fontsize * 2) + 1) {
+								    					oBolderLine.height = (oTextMemberObject.fontsize * 2) + 1;
+								    				}
+								    			}
+								    			
+								    		}								    											    		
 								    	}
 								    }
 						    	}
@@ -1323,7 +1510,19 @@ public class PDFExtract {
 							Collections.sort(listTextInLine);
 							
 							 for (Float textInLineKey : listTextInLine) {
-								sLine += hashTextInLine.get(textInLineKey) + " ";
+								 HTMLObject.TextObject oText = hashTextInLine.get(textInLineKey);
+								 String text = oText.text;
+				    			if (Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
+				    				
+				    				//<sup>
+				    				if (Math.abs(oText.top - oBolderLine.top) < 1) {
+				    					text = "<sup>" + text + "</sup>";	
+				    				}else {
+				    					text = "<sub>" + text + "</sub>";
+				    				}
+				    				
+				    			}
+								sLine += text + " ";
 							}
 							// System.out.println(sLine);
 						    

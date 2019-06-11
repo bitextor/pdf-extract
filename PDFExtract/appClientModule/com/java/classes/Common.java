@@ -322,6 +322,7 @@ public class Common {
             	file.getParentFile().mkdirs();
 
             FileUtils.writeStringToFile(file, content, "UTF-8", false);
+            //FileUtils.writeStringToFile(file, content);
         }
         catch (Exception ex)
         {

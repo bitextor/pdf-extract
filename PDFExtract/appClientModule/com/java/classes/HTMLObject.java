@@ -27,5 +27,6 @@ public class HTMLObject {
 	    public float width;
 	    public String text;
 	    public String style;
+	    public float fontsize;
 	}
 }
