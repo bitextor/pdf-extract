@@ -79,6 +79,19 @@ public class PDFExtract {
     private static final String REGEX_SIZE = "(.*font-size:)([0-9.]+)(pt.*)$";
     private static final String REGEX_RESIZE = "(.*font-size:)([0-9.]+)(pt.*)$";
     private static final String REGEX_WORDSPACING = ".*word-spacing:([\\-\\+0-9]+.[0-9]+).*";
+    
+    private Pattern patternTop = Pattern.compile(REGEX_TOP);
+    private Pattern patternLeft = Pattern.compile(REGEX_LEFT);
+    private Pattern patternHeight = Pattern.compile(REGEX_HEIGHT);
+    private Pattern patternWidth = Pattern.compile(REGEX_WIDTH);
+    private Pattern patternFontSize = Pattern.compile(REGEX_FONTSIZE);
+    private Pattern patternFontFamily = Pattern.compile(REGEX_FONTFAMILY);
+    private Pattern patternWord = Pattern.compile(REGEX_WORD);
+    private Pattern patternColor = Pattern.compile(REGEX_COLOR);
+    private Pattern patternSize = Pattern.compile(REGEX_SIZE);
+    private Pattern patternResize = Pattern.compile(REGEX_RESIZE);
+    private Pattern patternWordSpacing = Pattern.compile(REGEX_WORDSPACING);
+    
 	private Common common = new Common();
 
 	private void initial(String logFilePath) throws Exception {
@@ -221,6 +234,7 @@ public class PDFExtract {
 			 */
 			try {
 				htmlBuffer = convertPdfToHtml(inputFile);
+				//htmlBuffer.append(common.readFile("/home/administrator/Work/LSTools/PDFExtract/Script/org.html"));
 			}catch(Exception e) {
 				throw e;
 			}
@@ -496,15 +510,15 @@ public class PDFExtract {
 	
 	                HtmlTagValues v = new HtmlTagValues();
 	
-	                v.Top = line.replaceAll(REGEX_TOP, "$1");
-	                v.Left = line.replaceAll(REGEX_LEFT, "$1");
-	                v.Height = line.replaceAll(REGEX_HEIGHT, "$1");
-	                v.Width = line.replaceAll(REGEX_WIDTH, "$1");
-	                v.FontFamily = line.replaceAll(REGEX_FONTFAMILY, "$1");
-	                v.FontSize = line.replaceAll(REGEX_FONTSIZE, "$1");
-	                v.Word = line.replaceAll(REGEX_WORD, "$1");
-	                v.WordSpacing = line.replaceAll(REGEX_WORDSPACING, "$1");
-	                v.Color = line.replaceAll(REGEX_COLOR, "$1");
+	                v.Top = patternTop.matcher(line).replaceAll("$1");
+	                v.Left = patternLeft.matcher(line).replaceAll("$1");
+	                v.Height = patternHeight.matcher(line).replaceAll("$1");
+	                v.Width = patternWidth.matcher(line).replaceAll("$1");
+	                v.FontFamily = patternFontFamily.matcher(line).replaceAll("$1");
+	                v.FontSize = patternFontSize.matcher(line).replaceAll("$1");
+	                v.Word = patternWord.matcher(line).replaceAll("$1");
+	                v.WordSpacing = patternWordSpacing.matcher(line).replaceAll("$1");
+	                v.Color = patternColor.matcher(line).replaceAll("$1");
 	                if (maxTop < Double.valueOf(v.Top)) {
 	                    v.maxTop = v.Top;
 	                }
@@ -527,8 +541,8 @@ public class PDFExtract {
 	            	hPage++;
 	            	hList.put(hPage, new ArrayList<HtmlTagValues>());
 
-	            	pageWidth = Double.valueOf(line.replaceAll(REGEX_WIDTH, "$1"));
-	                pageHeight = Double.valueOf(line.replaceAll(REGEX_HEIGHT, "$1"));
+	            	pageWidth = Double.valueOf(patternWidth.matcher(line).replaceAll("$1"));
+	                pageHeight = Double.valueOf(patternHeight.matcher(line).replaceAll("$1"));
 	            }
 	        }
         }finally {
@@ -573,16 +587,16 @@ public class PDFExtract {
 
     private boolean checkLineAdd(double pageWidth, double pageHeight, String line) {
         HtmlTagValues v = new HtmlTagValues();
-    	
-        v.Top = line.replaceAll(REGEX_TOP, "$1");
-        v.Left = line.replaceAll(REGEX_LEFT, "$1");
-        v.Height = line.replaceAll(REGEX_HEIGHT, "$1");
-        v.Width = line.replaceAll(REGEX_WIDTH, "$1");
-        v.FontFamily = line.replaceAll(REGEX_FONTFAMILY, "$1");
-        v.FontSize = line.replaceAll(REGEX_FONTSIZE, "$1");
-        v.Word = line.replaceAll(REGEX_WORD, "$1");
-        v.WordSpacing = line.replaceAll(REGEX_WORDSPACING, "$1");
-        v.Color = line.replaceAll(REGEX_COLOR, "$1");
+
+        v.Top = patternTop.matcher(line).replaceAll("$1");
+        v.Left = patternLeft.matcher(line).replaceAll("$1");
+        v.Height = patternHeight.matcher(line).replaceAll("$1");
+        v.Width = patternWidth.matcher(line).replaceAll("$1");
+        v.FontFamily = patternFontFamily.matcher(line).replaceAll("$1");
+        v.FontSize = patternFontSize.matcher(line).replaceAll("$1");
+        v.Word = patternWord.matcher(line).replaceAll("$1");
+        v.WordSpacing = patternWordSpacing.matcher(line).replaceAll("$1");
+        v.Color = patternColor.matcher(line).replaceAll("$1");
 
         return checkLineAdd(pageWidth, pageHeight, v);
     }
@@ -632,22 +646,26 @@ public class PDFExtract {
 	                    }
 	                    nPage++;
 	                }
-	                pageWidth = Double.valueOf(line.replaceAll(REGEX_WIDTH, "$1"));
-	                pageHeight = Double.valueOf(line.replaceAll(REGEX_HEIGHT, "$1"));
+	            	pageWidth = Double.valueOf(patternWidth.matcher(line).replaceAll("$1"));
+	                pageHeight = Double.valueOf(patternHeight.matcher(line).replaceAll("$1"));
 	            } else if (m.find()) {
 	                if (checkLineAdd(pageWidth, pageHeight, line)) {
 		                double percent = 0.11;
-		                String size = line.replaceAll(REGEX_SIZE, "$2");
+		                //String size = line.replaceAll(REGEX_SIZE, "$2");
+		                String size = patternSize.matcher(line).replaceAll("$2");
 		                double a = Double.parseDouble(size);
 		                double calSIZE = a - (a * percent);
 		                if (wordIterator == 1) {
-		                    line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3");
+		                    //line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3");
+		                	line = patternResize.matcher(line).replaceAll("$1" + calSIZE + "$3");
 		                    wordIterator = 0;
 		                } else {
-		                    line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3"); 
+		                    //line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3"); 
+		                	line = patternResize.matcher(line).replaceAll("$1" + calSIZE + "$3");
 		                    wordIterator = 1;
 		                }
-		                line = line.replaceAll(REGEX_COLOR, "$1" + "#000000" + "$3");
+		                //line = line.replaceAll(REGEX_COLOR, "$1" + "#000000" + "$3");
+		                line = patternColor.matcher(line).replaceAll("$1" + "#000000" + "$3");
 		                htmlBufferOut.append(line + "\n");
 	                }
 	            } else {
@@ -692,6 +710,7 @@ public class PDFExtract {
         int paraRound = 0;
         int paraCount = 0;
         double gapLine = 0;
+        double gapWord = 0;
         boolean clearPara = false;
 
         //model
@@ -711,6 +730,7 @@ public class PDFExtract {
         ArrayList<Double> objparabottom = new ArrayList<Double>();
         //
         ArrayList<Double> objlinetop = new ArrayList<Double>();
+        ArrayList<Double> objlineleft = new ArrayList<Double>();
         ArrayList<Double> objlinebottom = new ArrayList<Double>();
 
         for (int key : hList.keySet() ) {
@@ -725,6 +745,7 @@ public class PDFExtract {
                 HtmlTagValues v_column = (i - columnCount >= 0 ? tagList.get(i - columnCount) : null);
                 HtmlTagValues v_para = (i - paraCount >= 0 ? tagList.get(i - paraCount) : null);
                 gapLine = 0;
+                gapWord = 0;
                 //
                 if (i == 0){
                 	//come first
@@ -737,6 +758,7 @@ public class PDFExtract {
                 
                 objlinebottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
                 objlinetop.add(Double.valueOf(v.Top));
+                objlineleft.add(Double.valueOf(v.Left));
                 //
                 objcolright.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
                 objcolbottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
@@ -777,8 +799,9 @@ public class PDFExtract {
                     //
                 }
 
-                if ((v_next != null && nextTop == 0) ||
-                	(v_next != null && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < 2)){
+                
+                if ( (v_next != null && nextTop == 0)
+                		){
 
                 	double gap =  Math.abs(Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left)) - Double.valueOf(v.Width));
             		lineWidth += (Double.valueOf(v.Width) + gap);
@@ -800,10 +823,11 @@ public class PDFExtract {
                     	double maxlinebottom = Collections.max(objlinebottom);
                     	xheight = maxlinebottom - minlinetop + 1;
                     } 
-                    
-                    objm.add(getDIV(minlinetop, lineLeft, xheight, lineWidth, "blue"));
+                    double xleft = Collections.min(objlineleft);
+                    objm.add(getDIV(minlinetop, xleft, xheight, lineWidth, "blue"));
                     
                     objlinetop.removeAll(objlinetop);
+                    objlineleft.removeAll(objlineleft);
                     objlinebottom.removeAll(objlinebottom);
 
                     //for column
@@ -828,6 +852,8 @@ public class PDFExtract {
                     	objpara.add(lineWidth);	
                     }
 
+                    
+                    
                     lineWidth = 0;
                     //
                 }
@@ -933,6 +959,14 @@ public class PDFExtract {
                     }
                 }
                 
+                 /*if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+                 		|| (v_next == null || (nextTop > lineHeight*5))
+                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
+                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color))) // && Double.valueOf(v.FontSize) > 20))
+                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
+                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+                 */
                 if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
                  		|| (v_next == null || (nextTop > lineHeight*5))
                  		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Math.abs(Double.valueOf(v.Height) - Double.valueOf(v_next.Height)) > 10))
@@ -940,6 +974,7 @@ public class PDFExtract {
                  		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
                  		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.Height) > 20 && Double.valueOf(v_next.Height) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
                  		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.Height) <= 20 && Double.valueOf(v_next.Height) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
+                 		//|| (v_pre != null && v_pre.Word && nextLeft > Double.valueOf(v.Width))
                  
                 	) {
                 	
@@ -1007,8 +1042,9 @@ public class PDFExtract {
                         	double maxlinebottom = Collections.max(objlinebottom);
                         	xheight = maxlinebottom - minlinetop + 1;
                         } 
-                        
-                        objm.add(getDIV(minlinetop, lineLeft, xheight, lineWidth, "blue"));
+
+                        double xleft = Collections.min(objlineleft);
+                        objm.add(getDIV(minlinetop, xleft, xheight, lineWidth, "blue"));
                 	}
                     
                     if (paraRound > 0) {
@@ -1109,6 +1145,7 @@ public class PDFExtract {
                     round = 0;
                     columnCount = 0;
                     objlinetop.removeAll(objlinetop);
+                    objlineleft.removeAll(objlineleft);
                     objlinebottom.removeAll(objlinebottom);
 
                 }
