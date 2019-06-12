@@ -221,8 +221,6 @@ public class PDFExtract {
 			 */
 			try {
 				htmlBuffer = convertPdfToHtml(inputFile);
-				
-				common.WriteFile("/home/administrator/Work/LSTools/PDFExtract/Script/org.html", htmlBuffer.toString());
 			}catch(Exception e) {
 				throw e;
 			}
@@ -765,6 +763,7 @@ public class PDFExtract {
 
                     if (nextTop < 2) nextTop = 0;
                     if (nextLeft < 2) nextLeft = 0;
+                    
                 }
 
                 //for line
@@ -778,7 +777,6 @@ public class PDFExtract {
                     //
                 }
 
-                
                 if ((v_next != null && nextTop == 0) ||
                 	(v_next != null && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < 2)){
 
@@ -830,8 +828,6 @@ public class PDFExtract {
                     	objpara.add(lineWidth);	
                     }
 
-                    
-                    
                     lineWidth = 0;
                     //
                 }
@@ -937,14 +933,6 @@ public class PDFExtract {
                     }
                 }
                 
-                 /*if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
-                 		|| (v_next == null || (nextTop > lineHeight*5))
-                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
-                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color))) // && Double.valueOf(v.FontSize) > 20))
-                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
-                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
-                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
-                 */
                 if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
                  		|| (v_next == null || (nextTop > lineHeight*5))
                  		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Math.abs(Double.valueOf(v.Height) - Double.valueOf(v_next.Height)) > 10))
