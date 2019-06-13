@@ -428,6 +428,14 @@ function isFooter(lines, pageWidth, pageHeight) {
 >
 > These rules can become very complex depending on the language. Many rules are quite simple at a basic level, but depending on the layout of the page (i.e. indentations around a shape), the joins can be difficult. At present it is recommended to use the `top` and `left` attributes to handle indentation related rules and other similar complexities outside of PDFExtract. Future versions will look to use machine learning models to assist in more ambigious join decisions. Future versions will also support the use of LanguageID technology at a line level to support multiple languages in a single PDF document. This is out of scope for the time being.
 
+## Search and Replace Characters
+Some PDF creation tools will transform characters resulting in words that are not using the correct letters (in terms of actual Unicode values), but look correct on the screen. 
+
+For example (A) first (B) ﬁrst
+
+Both of these look the same. But the "fi" in A is the letter "f" and "i" while the "fi" in B is the character "ﬁ" (U+FB01). 
+
+A list of these characters can be found in the file `search-replace.tab` in the same folder as the PDFExtract.jar file. Additional search and replace characters can be added as needed. This search and replace is performed when processing words and merging them into lines.
 
 ## Performance
 The processing has been optimized and multithreaded. Reducing a large file can take some time. A 50MB PDF can be extracted, cleaned and stored in as little 10K, depending on the content.
