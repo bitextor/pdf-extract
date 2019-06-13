@@ -27,6 +27,7 @@
   - [Repairing Object Sequences](#repairing-object-sequences)
   - [Detecting Custom Headers and Footers](#detecting-custom-headers-and-footers)
   - [Sample JavaScript Template](#sample-javascript-template)
+- [Search and Replace Characters](#search-and-replace-characters)
 - [Performance](#performance)
 - [TODO](#todo)
 - [FAQ](#faq)
