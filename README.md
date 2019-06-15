@@ -225,7 +225,7 @@ When comparing pages for alignment, the fonts may be totally different. This app
 The dominant font is considered the default for the document, so removed. Other fonts are put in place as needed with generated style sheet entries. Fonts that are very similar will be combined. Fonts are only applied to a span element and only when not the default/dominant font. 
 
 ## Document Format ##
-Once the various page regions are defined as described above, the objects that fall within the each region can be extracted into a normalized HTML format. The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. 
+Once the various page regions are defined as described above, the objects that fall within the each region can be extracted into a normalized HTML format. The HTML format is designed specifically to make alignment across 2 or more webpages simple and easy. Content is very clean with minimal embedded information. Supertext and Subtext is embedded in <sup> and <sub> tags. Common font issues are handled with [search-replace](#search-and-replace-characters)
 
 ### Alignment Optimized HTML
 ```html
@@ -449,10 +449,15 @@ The processing has been optimized and multithreaded. Reducing a large file can t
 | sample4.pdf | 3,462.57 | 13:30:13.176 | 13:31:51.986 | 00:01:38.810|
 
 
+TODO - BATCH PERFORMANCE VS SINGLE FILE PERFORMANCE
+
+
 ## TODO
 The below list is a set of features planned for future:
-- Right-to-left languages.
+- Right-to-Left languages.
   - This code is untested on right-to-left languages and may need to be modified to support languages such as Arabic.
+- Vertical Script
+- This code is untested on right-to-left languages and may need to be modified to support languages such as Japanese when written down the page..
 - Autodetect language. 
   - Out of scope for this version. Will be added into a future release, but will greatly slow down the processing so should be used only when needed.
   - When implimented, each line will be processed for language identification and tagged with the language information. This will improve sentence joining.
@@ -460,6 +465,8 @@ The below list is a set of features planned for future:
   - In order to join sentences, the language must be known. Some simplistic rules can be applied using the analyzeJoins JavaScript that deal with language specific joins or the join logic can be handled externally. Future versions will have the option to use models to assist in the decision to join lines or to keep them split.
 - Handle tables
   - While columns are detected and handled, table detection is very complex and difficult. This is outside of the scope of the intial project version. As most alignable content is not in tables, this does not have a major impact on the outcome of bilingual corpus processing.
+- Performance Optimization
+  - There are a number of areas that have been identified for performance optimization. We will work on those areas next.
 
 ----
 ## FAQ
