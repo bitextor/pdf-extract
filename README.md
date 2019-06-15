@@ -479,7 +479,7 @@ No. This tool processes only text. It is not an OCR tool, it is only able to ext
 ### Why are the fonts normalized?
 The fonts are normalized so that the file is significantly smaller and easier to align. When comparing a translated document in 2 or more languages, the structure should be very similar, with headings and other features comparable in both documents. Depending on the language, different fonts may be used. By normalizing the fonts, it is possible to use the normalized font class names as part of the alignment process.
 
-### Why are the sentences still split in multple pieces across lines?
+### Why are the sentences still split in multiple pieces across lines?
 Sentence joining is language specific. Language ID is not performed at present, but will be added in the future. If you know the language of the content, you can add simple join rules. See [Runtime JavaScript Extensions](#runtime-javaScript-extensions)
 
 
