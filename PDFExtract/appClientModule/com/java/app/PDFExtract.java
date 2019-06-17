@@ -5,9 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,6 +89,8 @@ public class PDFExtract {
     private Pattern patternSize = Pattern.compile(REGEX_SIZE);
     private Pattern patternResize = Pattern.compile(REGEX_RESIZE);
     private Pattern patternWordSpacing = Pattern.compile(REGEX_WORDSPACING);
+    
+    private HashMap<String, String> searchReplaceList = new HashMap<String, String>();
     
 	private Common common = new Common();
 
@@ -196,16 +196,6 @@ public class PDFExtract {
 			}
 
 			/**
-			 * Get output file name without extension
-			 */
-			String outputName = common.getBaseName(outputFile);
-			
-			/**
-			 * Get output file extension
-			 */
-			String outputExt = common.getExtension(outputFile);
-
-			/**
 			 * Get output directory from outputFile and create it if not exists
 			 */
 			String outputPath = common.getParentPath(outputFile);
@@ -234,7 +224,6 @@ public class PDFExtract {
 			 */
 			try {
 				htmlBuffer = convertPdfToHtml(inputFile);
-				//htmlBuffer.append(common.readFile("/home/administrator/Work/LSTools/PDFExtract/Script/org.html"));
 			}catch(Exception e) {
 				throw e;
 			}
@@ -669,7 +658,11 @@ public class PDFExtract {
 		                htmlBufferOut.append(line + "\n");
 	                }
 	            } else {
+	                if (line.indexOf("</style>") > -1) {
+	                	line = line.replace("</style>", "\n.p:nth-child(even){background:rgba(255, 255, 0, 0.5);} .p:nth-child(odd){background:rgba(200, 255, 100, 0.5);}\n</style>");
+	                }
 	                htmlBufferOut.append(line + "\n");
+	                
 	            }
 	        }
     	}finally {
@@ -786,6 +779,7 @@ public class PDFExtract {
                     if (nextTop < 2) nextTop = 0;
                     if (nextLeft < 2) nextLeft = 0;
                     
+                    gapWord = Math.abs(Double.valueOf(v.Left) + Double.valueOf(v.Width) - Double.valueOf(v_next.Left));
                 }
 
                 //for line
@@ -800,7 +794,9 @@ public class PDFExtract {
                 }
 
                 
-                if ( (v_next != null && nextTop == 0)
+                
+                if ( (v_next != null && nextTop == 0 && gapWord < 15)
+                		|| (v_next != null && gapWord < 15 && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < 2)
                 		){
 
                 	double gap =  Math.abs(Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left)) - Double.valueOf(v.Width));
@@ -1184,6 +1180,7 @@ public class PDFExtract {
 			int iPageID = 0;
 			AtomicReference<Hashtable<String,Integer>> hashClasses = new AtomicReference<Hashtable<String,Integer>>();
 			
+			searchReplaceList = common.getSearchReplaceList();
 
 			while ((sLine = br.readLine()) != null) {				
 				if (sLine.indexOf(sStartPage) == -1 && !bFoundFirstPage) continue; 
@@ -1399,7 +1396,7 @@ public class PDFExtract {
 		// Get Text
 		//top:709.0735pt;left:135.07628pt;line-height:8.099976pt;font-family:Times;font-size:8.01pt;word-spacing:3.354201pt;color:#323232;width:39.49199pt;
 		//Pattern pText = Pattern.compile("<div[ ]class=\"p\"[ ]id=\".*?\"[ ]style=\"top:(?<top>.*?)pt;left:(?<left>.*?)pt;line-height:(?<lineheight>.*?)pt;font-family:(?<fontfamily>.*?);font-size:(?<fontsize>.*?)pt;(font-weight:(?<fontweight>.*?);)?(letter-spacing:(?<letterspacing>.*?);)?(font-style:(?<fontstyle>.*?);)?(word-spacing:(?<wordspacing>.*?)pt;)?(color:(?<color>.*?);)?width:(?<width>.*?)pt;\">(?<text>.*?)</div>", Pattern.MULTILINE);
-		Pattern pText = Pattern.compile("<div[ ]class=\"p\"[ ]id=\".*?\"[ ]style=\"top:(?<top>.*?)pt;left:(?<left>.*?)pt;line-height:(?<lineheight>.*?)pt;font-family:(?<fontfamily>.*?);font-size:(?<fontsize>[^;]*?)pt;(font-weight:(?<fontweight>.*?);)?(letter-spacing:(?<letterspacing>.*?);)?(font-style:(?<fontstyle>.*?);)?(word-spacing:(?<wordspacing>.*?)pt;)?(color:(?<color>.*?);)?width:(?<width>.*?)pt;\">(?<text>.*?)</div>", Pattern.MULTILINE);
+		Pattern pText = Pattern.compile("<div[ ]class=\"p\"[ ]id=\".*?\"[ ]style=\"top:(?<top>.*?)pt;left:(?<left>.*?)pt;line-height:(?<lineheight>.*?)pt;font-family:(?<fontfamily>.*?);font-size:(?<fontsize>[^;]*?)pt;(font-weight:(?<fontweight>.*?);)?(word-spacing:(?<wordspacing>.*?)pt;)?(letter-spacing:(?<letterspacing>.*?);)?(font-style:(?<fontstyle>.*?);)?(color:(?<color>.*?);)?width:(?<width>.*?)pt;\">(?<text>.*?)</div>", Pattern.MULTILINE);
 		Matcher mText = pText.matcher(sContent);
 		int iSeq = 0;
 		while (mText.find()) {
@@ -1544,20 +1541,37 @@ public class PDFExtract {
 						    List<Float> listTextInLine = new ArrayList<Float>(hashTextInLine.keySet());
 							Collections.sort(listTextInLine);
 							
-							 for (Float textInLineKey : listTextInLine) {
-								 HTMLObject.TextObject oText = hashTextInLine.get(textInLineKey);
-								 String text = oText.text;
-				    			if (oText.fontsize < oBolderLine.height && Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
+							int round = 0;
+							float prevRight = 0;
+							String prevText = "";
+							for (Float textInLineKey : listTextInLine) {
+								HTMLObject.TextObject oText = hashTextInLine.get(textInLineKey);
+								String text = oText.text;
+								 
+								text = common.replaceText(searchReplaceList, text);
+								 
+								if (oText.fontsize < oBolderLine.height && Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
 				    				
-				    				//<sup>
-				    				if (Math.abs(oText.top - oBolderLine.top) < 1) {
+				    			//<sup>
+									if (Math.abs(oText.top - oBolderLine.top) < 1) {
 				    					text = "<sup>" + text + "</sup>";	
 				    				}else {
 				    					text = "<sub>" + text + "</sub>";
 				    				}
 				    				
-				    			}
-								sLine += text + " ";
+								}
+								
+								if (round > 0 && oText.left - prevRight >= 0.2) {
+									/*if (prevText.equals(":")) {
+										
+									}*/
+									sLine += " ";
+								}
+								sLine += text;
+								
+								prevRight = oText.left + oText.width;
+								prevText = oText.text;
+								round++;
 							}
 							// System.out.println(sLine);
 						    
@@ -1645,6 +1659,7 @@ public class PDFExtract {
 	    
 		return sPageNormalized;
 	}
+	
 	private boolean CheckIsBoxInside(HTMLObject.BolderObject boxCover , HTMLObject.BolderObject boxInside)
 	{
 		float p = 0.1f;

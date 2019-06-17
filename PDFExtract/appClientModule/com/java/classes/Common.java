@@ -7,8 +7,11 @@ import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -492,5 +495,44 @@ public class Common {
 			return null;
 		}
 		
+	}
+	
+	public HashMap<String, String> getSearchReplaceList() {
+		HashMap<String, String> list = new HashMap<String, String>();
+
+		String searchReplacePath = getJarPath() + "/search-replace.tab";
+		if (IsExist(searchReplacePath)) {
+			//
+			 try {
+				List<String> lines = readLines(searchReplacePath);
+				
+				for (int i=0, len=lines.size(); i<len; i++) {
+					String[] cols = lines.get(i).split("\t");
+					if (cols.length < 2) {
+						continue;
+					}
+					list.put(cols[0], cols[1]);
+				}
+				
+			} catch (Exception e) {
+				
+			}
+		}		
+		
+		return list;
+	}
+	
+	public String replaceText(HashMap<String, String> hash, String text) {
+		String rtext = text;
+		if (hash != null && hash.size() > 0) {
+			for (Map.Entry me : hash.entrySet()) {
+				String search = me.getKey().toString();
+				String replace = me.getValue().toString();
+				
+				rtext = rtext.replaceAll(Pattern.quote(search), replace);
+	        }
+		}
+		
+		return rtext;
 	}
 }
