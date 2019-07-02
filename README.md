@@ -6,6 +6,7 @@
 - [Using PDFExtract.jar](#using-pdfextractjar)
   - [Command-line PDF Extraction](#command-line-pdf-extraction)
   - [Library PDF Extraction](#library-pdf-extraction)
+  - [Python PDF Extraction Wrapper](#python-pdf-extraction-wrapper)
 - [How It Works](#how-it-works)
   - [Basic Process](#basic-process)
     - [Processing Sequence](#processing-sequence)
@@ -146,6 +147,9 @@ pdf.Extract(batchFile, rulePath, threadCount, language, options, debug);
 InputStream inputStream = new FileInputStream(inputFile);
 OutputStream outputStream = pdf.Extract(inputStream, language, options, debug);
 ```
+
+### Python PDF Extraction Wrapper
+A Python3 wrapper has been developed that bridges between Python and Java using JPype. See [python-pdfextract](https://github.com/bitextor/python-pdfextract)
 
 ----
 ## How It Works
