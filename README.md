@@ -116,6 +116,11 @@ public void Extract(String inputFile, String outputFile, String rulePath, String
 public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug) throws Exception
 ```
 
+3. Stream
+```java
+public OutputStream Extract(InputStream inputStream, String language, String options, int debug) throws Exception
+```
+
 PDFExtract may be used from within Java with the following import:
 
 ```java
@@ -136,6 +141,10 @@ pdf.Extract(inputFile, outputFile, rulePath, language, options, debug);
 
 // Batch File
 pdf.Extract(batchFile, rulePath, threadCount, language, options, debug);
+
+// Stream
+InputStream inputStream = new FileInputStream(inputFile);
+OutputStream outputStream = pdf.Extract(inputStream, language, options, debug);
 ```
 
 ----
