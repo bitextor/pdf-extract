@@ -1,11 +1,8 @@
 package com.java.app;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
+import java.io.*;
+import java.net.URLConnection;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -23,7 +20,11 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.pdfbox.io.MemoryUsageSetting;
+import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.fit.pdfdom.PDFDomTree;
 import org.fit.pdfdom.PDFDomTreeConfig;
 import org.fit.pdfdom.resource.HtmlResourceHandler;
@@ -49,7 +50,7 @@ public class PDFExtract {
 	 * Set for build with runnable or not
 	 */
 	private final boolean runnable = true;
-	
+
 	private String logPath = "";
 	private String customScript = "";
 	private String pdfLanguage = "";
@@ -77,7 +78,7 @@ public class PDFExtract {
     private static final String REGEX_SIZE = "(.*font-size:)([0-9.]+)(pt.*)$";
     private static final String REGEX_RESIZE = "(.*font-size:)([0-9.]+)(pt.*)$";
     private static final String REGEX_WORDSPACING = ".*word-spacing:([\\-\\+0-9]+.[0-9]+).*";
-    
+
     private Pattern patternTop = Pattern.compile(REGEX_TOP);
     private Pattern patternLeft = Pattern.compile(REGEX_LEFT);
     private Pattern patternHeight = Pattern.compile(REGEX_HEIGHT);
@@ -89,9 +90,9 @@ public class PDFExtract {
     private Pattern patternSize = Pattern.compile(REGEX_SIZE);
     private Pattern patternResize = Pattern.compile(REGEX_RESIZE);
     private Pattern patternWordSpacing = Pattern.compile(REGEX_WORDSPACING);
-    
+
     private HashMap<String, String> searchReplaceList = new HashMap<String, String>();
-    
+
 	private Common common = new Common();
 
 	private void initial(String logFilePath) throws Exception {
@@ -113,16 +114,16 @@ public class PDFExtract {
 			if (!logFileValid) {
 				throw new Exception("Invalid log file path or permission denied.");
 			}
-			
+
 			writeLogFile = true;
-			
+
 			logPath = logFilePath;
 
 			if (runnable) common.print("Log File: " + logPath);
 		}
 
 	}
-	
+
     /**
    	Initializes a newly created PDFExtract object.
     @throws Exception
@@ -130,7 +131,7 @@ public class PDFExtract {
 	public PDFExtract() throws Exception {
 		initial("");
 	}
-	
+
 	/**
    	Initializes a newly created PDFExtract object.
     @param logFilePath The path to write the log file to.
@@ -139,7 +140,7 @@ public class PDFExtract {
 	public PDFExtract(String logFilePath) throws Exception {
 		initial(logFilePath);
 	}
-	
+
 	/**
 	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources.
 	 *
@@ -149,11 +150,11 @@ public class PDFExtract {
 	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
 	 * @param options    The control parameters
 	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
-	 * 
+	 *
 	 * @since            1.0
 	 */
 	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options, int debug) throws Exception {
-		
+
 		try {
 			if (writeLogFile) {
 				if (runnable) common.print(inputFile, "Start extract");
@@ -161,14 +162,14 @@ public class PDFExtract {
 			}else {
 				common.print(inputFile, "Start extract");
 			}
-			
+
 			/**
 			 * Check input file exists
 			 */
 			if (!common.IsExist(inputFile)) {
 				throw new Exception("Input file does not exist.");
 			}
-			
+
 			/**
 			 * Check input file extension
 			 */
@@ -189,7 +190,7 @@ public class PDFExtract {
 			if (common.IsEmpty(outputFile)) {
 				throw new Exception("Output file cannot be empty.");
 			}
-			
+
 			if (!batchMode) {
 				pdfLanguage = language;
 				debugMode = debug;
@@ -206,7 +207,7 @@ public class PDFExtract {
 			/**
 			 * Read rule script and load into object
 			 */
-            synchronized (lockerExtract) { 
+            synchronized (lockerExtract) {
             	customScript = common.getCustomScript(rulePath, customScript);
             }
 			if (common.IsNull(scriptEngine) && !common.IsEmpty(customScript) && !loadEngineFail) {
@@ -218,7 +219,7 @@ public class PDFExtract {
 				}
 			}
 
-			StringBuffer htmlBuffer = new StringBuffer(""); 
+			StringBuffer htmlBuffer = new StringBuffer("");
 			/**
 			 * Call function to convert PDF to HTML
 			 */
@@ -227,7 +228,7 @@ public class PDFExtract {
 			}catch(Exception e) {
 				throw e;
 			}
-            
+
 			/**
 			 * Call function to paint html box
 			 */
@@ -238,11 +239,11 @@ public class PDFExtract {
 				throw new Exception("paintHtmlBox fail.: " + e.getMessage());
             }
 
-			
+
             if (debugMode == 0) {
 
     			/**
-    			 * Call function to normalize html  
+    			 * Call function to normalize html
     			 */
 				//common.writeLog(logPath, inputFile, "Start Normalize...", false);
                 try {
@@ -252,9 +253,9 @@ public class PDFExtract {
                 }
 
             }
-            
+
 			/**
-			 * Write to output file.  
+			 * Write to output file.
 			 */
 			common.WriteFile(outputFile, htmlBuffer.toString());
 
@@ -264,7 +265,7 @@ public class PDFExtract {
 			}else {
 				common.print(inputFile, "Extract success. -> " + outputFile + "");
 			}
-			
+
 		}catch(Exception e) {
 			String message = e.getMessage();
 			if (writeLogFile) {
@@ -291,13 +292,13 @@ public class PDFExtract {
 	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
 	 * @param options    The control parameters
 	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
-	 * 
+	 *
 	 * @since            1.0
 	 */
 	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug) throws Exception {
 		try {
 			batchMode = true;
-			
+
 			if (writeLogFile) {
 				if (runnable) common.print("Start extract batch file: " + batchFile);
 				common.writeLog(logPath, "Start extract batch file: " + batchFile);
@@ -330,38 +331,38 @@ public class PDFExtract {
 
 			/**
 			 * Read batch file
-			 */	
+			 */
 	        List<String> lines = common.readLines(batchFile);
-			
+
 			int ind = 0, len = lines.size();
 			while (ind < len) {
-				
+
 				if (countThreadExtract < maxThreadCount) {
 					String line = lines.get(ind);
 
 					/**
 					 * Skip the empty line
-					 */	
+					 */
 					if (common.IsEmpty(line)) {
 						ind++;
 						continue;
 					}
-					
+
 					AddThreadExtract(ind, line, rulePath, language, options, debug);
 
 					ind++;
 				}
-				
+
 				Thread.sleep(100);
 			}
 
 			/**
 			 * Wait for all thread finish
-			 */	
+			 */
 			while (countThreadExtract > 0) {
 				Thread.sleep(100);
 			}
-			
+
 		}catch(Exception e) {
 			String message = e.getMessage();
 			if (writeLogFile) {
@@ -379,6 +380,106 @@ public class PDFExtract {
 			}
 		}
 	}
+	
+	/**
+	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources.
+	 *
+	 * @param InputStream Stream data for extraction
+	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
+	 * @param options    The control parameters
+	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
+	 *
+	 * @return OutputStream Stream Out
+	 * @since            1.0
+	 */
+	public OutputStream Extract(InputStream inputStream, String language, String options, int debug) throws Exception {
+		try {
+			if (writeLogFile) {
+				if (runnable)
+					common.print("Input Stream", "Start extract");
+				common.writeLog(logPath, "Input Stream", "Start extract", false);
+			} else {
+				common.print("Input Stream", "Start extract");
+			}
+
+			/**
+			 * Check input stream can be read ?
+			 */
+			if (inputStream.available() <= 0) {
+				throw new Exception("Input Stream does not exist.");
+			}
+
+			if (!batchMode) {
+				pdfLanguage = language;
+				debugMode = debug;
+			}
+
+			StringBuffer htmlBuffer;
+
+			/**
+			 * Call function to paint html box
+			 */
+			try {
+				htmlBuffer = convertPdfToHtml(inputStream);
+			} catch (Exception e) {
+				throw new Exception("paintHtmlBox fail.: " + e.getMessage());
+			}
+
+			/**
+			 * Call function to paint html box
+			 */
+			try {
+				htmlBuffer = paintHtmlBox(htmlBuffer);
+			} catch (Exception e) {
+				throw new Exception("paintHtmlBox fail.: " + e.getMessage());
+			}
+
+			if (debugMode == 0) {
+				/**
+				 * Call function to normalize html
+				 */
+				try {
+					htmlBuffer = Normalize(htmlBuffer);
+				} catch (Exception e) {
+					throw new Exception("Normalize fail.: " + e.getMessage());
+				}
+			}
+
+			/**
+			 * Write output stream
+			 */
+
+			OutputStream outputStream = new ByteArrayOutputStream();
+			IOUtils.write(htmlBuffer.toString(), outputStream, "UTF-8");
+
+			if (writeLogFile) {
+				if (runnable)
+					common.print("Input Stream", "Extract success.");
+				common.writeLog(logPath, "Input Stream", "Extract success.", false);
+			} else {
+				common.print("Input Stream", "Extract success.");
+			}
+
+			return outputStream;
+		} catch (Exception e) {
+			String message = e.getMessage();
+			if (writeLogFile) {
+				common.writeLog(logPath, "Input Stream", "Error: " + message, true);
+			} else {
+				if (!runnable)
+					common.print("Input Stream", "Error: " + message);
+			}
+
+			throw e;
+		} finally {
+			if (batchMode) {
+				synchronized (lockerExtract) {
+					countThreadExtract--;
+				}
+			}
+		}
+	}
+
 
 	/**
 	 * Add new thread pdf extract
@@ -390,28 +491,28 @@ public class PDFExtract {
         try
         {
             String threadName = "ext-" + index;
-            
+
             synchronized (lockerExtract) { countThreadExtract++; }
             threadExtract = new Thread(threadName) {
     			public void run() {
 
     				String inputFile = "", outputFile = "";
     				try {
-    					
+
     					/**
     					 * Validate line to process
-    					 */	
+    					 */
 	    				String[] cols = line.split("\t");
-	    				
+
 	    				if (cols == null || cols.length < 2) {
 	    					throw new Exception("Invalid batch line: " + line);
 	    				}
 	    				inputFile = cols[0];
 	    				outputFile = cols[1];
-	    				
+
     					/**
     					 * Call function to extract
-    					 */	
+    					 */
 	    				Extract(inputFile, outputFile, rulePath, language, options, debug);
 
     				}catch(Exception e) {
@@ -442,7 +543,6 @@ public class PDFExtract {
 			}
         }
     }
-    
 
 	/**
 	 * Convert PDF to HTML file
@@ -470,7 +570,33 @@ public class PDFExtract {
 			if (output != null) { output.close(); output = null; }
 		}
     }
-    
+
+	/**
+	 * Convert PDF to HTML file
+	 *
+	 * @since 1.0
+	 */
+    private StringBuffer convertPdfToHtml(InputStream inputStream) throws Exception {
+        MemoryUsageSetting setupMainMemoryOnly = MemoryUsageSetting.setupMainMemoryOnly();
+        PDDocument pdf = null;
+        StringWriter output = null;
+        try {
+            pdf = PDDocument.load(inputStream, setupMainMemoryOnly);
+            HtmlResourceHandler handler  = new IgnoreResourceHandler();
+            PDFDomTreeConfig config = PDFDomTreeConfig.createDefaultConfig();
+            config.setImageHandler(handler);
+            PDFDomTree parser = new PDFDomTree(config);
+            output = new StringWriter();
+            parser.writeText(pdf, output);
+            return output.getBuffer();
+        } catch (Exception e) {
+            throw new Exception("Convert pdf to html fail.: " + e.getMessage());
+        } finally {
+            if (pdf != null) { pdf.close(); pdf = null; }
+            if (output != null) { output.close(); output = null; }
+        }
+	}
+
 	/**
 	 * Paint HTML box
 	 *
@@ -481,7 +607,7 @@ public class PDFExtract {
         HashMap<Integer, List<HtmlTagValues>> hList = new HashMap<Integer, List<HtmlTagValues>>();
         int hPage = -1;
         try {
-			
+
 	        InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()), StandardCharsets.UTF_8);
 	        b_in = new BufferedReader(i_in);
 	        double pageWidth = 0;
@@ -494,11 +620,11 @@ public class PDFExtract {
 	            double maxLeft = 0;
 	            Matcher m = this.patternP.matcher(line);
 	            Matcher m1 = this.patternPage.matcher(line);
-	
+
 	            if (m.find()) {
-	
+
 	                HtmlTagValues v = new HtmlTagValues();
-	
+
 	                v.Top = patternTop.matcher(line).replaceAll("$1");
 	                v.Left = patternLeft.matcher(line).replaceAll("$1");
 	                v.Height = patternHeight.matcher(line).replaceAll("$1");
@@ -517,14 +643,14 @@ public class PDFExtract {
 	                if (maxLeft < Double.valueOf(v.Left)) {
 	                    v.maxLeft = v.Left;
 	                }
-	                
+
 	                if (!checkLineAdd(pageWidth, pageHeight, v)) {
 	                    //
 	                    continue;
 	                }
-	
+
 	                hList.get(hPage).add(v);
-	                
+
 	            } else if (m1.find()) {
 
 	            	hPage++;
@@ -532,6 +658,7 @@ public class PDFExtract {
 
 	            	pageWidth = Double.valueOf(patternWidth.matcher(line).replaceAll("$1"));
 	                pageHeight = Double.valueOf(patternHeight.matcher(line).replaceAll("$1"));
+
 	            }
 	        }
         }finally {
@@ -540,7 +667,7 @@ public class PDFExtract {
         		b_in = null;
         	}
         }
-        
+
         try{
         	LinkedHashMap<Integer, ArrayList<String>> model = getBox(hList);
         	htmlBuffer = drawBox(htmlBuffer, model);
@@ -589,25 +716,25 @@ public class PDFExtract {
 
         return checkLineAdd(pageWidth, pageHeight, v);
     }
-    
+
     private boolean checkLineAdd(double pageWidth, double pageHeight, HtmlTagValues v) {
 
         if (Double.valueOf(v.Left) < 0 || Double.valueOf(v.Top) < 0 || Double.valueOf(v.Left) > pageWidth || Double.valueOf(v.Top) > pageHeight) {
         	return false;
         }else {
-        	return true;	
+        	return true;
         }
     }
 
 	/**
-	 * Draw box to html 
+	 * Draw box to html
 	 *
 	 * @since 1.0
 	 */
     private StringBuffer drawBox(StringBuffer htmlBuffer, LinkedHashMap<Integer, ArrayList<String>> model) throws IOException {
 
     	BufferedReader b_in = null;
-    	
+
     	StringBuffer htmlBufferOut = new StringBuffer();
     	try {
 	        InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()), StandardCharsets.UTF_8);
@@ -623,16 +750,23 @@ public class PDFExtract {
 	            Matcher m1 = this.patternPage.matcher(line);
 	            Matcher m2 = this.patternBlankSpace.matcher(line);
 	            Matcher m3 = this.patternImage.matcher(line);
-	
+
 	            if (m2.find() || m3.find()) {
 	                line = line.replaceAll(".*src.*>", "");
 	                line = line.replaceAll("<div class=\"r\" style.*", "");
 	            } else if (m1.find()) {
-	            	htmlBufferOut.append(line + "\n");
 	                if (nPage <= model.size() && model.size() > 0) {
-	                    for (int x = 0; x < model.get(nPage).size(); x++) {
-	                        htmlBufferOut.append(model.get(nPage).get(x) + "\n");
-	                    }
+	                	if (model.get(nPage).size() > 0) {
+			            	htmlBufferOut.append(line + "\n");
+		                    for (int x = 0; x < model.get(nPage).size(); x++) {
+		                        htmlBufferOut.append(model.get(nPage).get(x) + "\n");
+		                    }
+	                	}else {
+	                		if (line.indexOf("/>") > -1) {
+		                		line = line.substring(0, line.lastIndexOf("/>")) + "></div>";
+	                		}
+			            	htmlBufferOut.append(line + "\n");
+	                	}
 	                    nPage++;
 	                }
 	            	pageWidth = Double.valueOf(patternWidth.matcher(line).replaceAll("$1"));
@@ -649,7 +783,7 @@ public class PDFExtract {
 		                	line = patternResize.matcher(line).replaceAll("$1" + calSIZE + "$3");
 		                    wordIterator = 0;
 		                } else {
-		                    //line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3"); 
+		                    //line = line.replaceAll(REGEX_RESIZE, "$1" + calSIZE + "$3");
 		                	line = patternResize.matcher(line).replaceAll("$1" + calSIZE + "$3");
 		                    wordIterator = 1;
 		                }
@@ -662,18 +796,18 @@ public class PDFExtract {
 	                	line = line.replace("</style>", "\n.p:nth-child(even){background:rgba(255, 255, 0, 0.5);} .p:nth-child(odd){background:rgba(200, 255, 100, 0.5);}\n</style>");
 	                }
 	                htmlBufferOut.append(line + "\n");
-	                
+
 	            }
 	        }
     	}finally {
-    		if (b_in != null) { b_in.close(); b_in = null; }	
+    		if (b_in != null) { b_in.close(); b_in = null; }
     	}
-    	
+
     	return htmlBufferOut;
     }
 
 	/**
-	 * Get box to draw 
+	 * Get box to draw
 	 *
 	 * @since 1.0
 	 */
@@ -730,424 +864,434 @@ public class PDFExtract {
             //
         	List<HtmlTagValues> tagList = hList.get(key);
 
-        	for (int i=0, len=tagList.size(); i<len; i++) {
-        	
-                HtmlTagValues v = tagList.get(i);
-                HtmlTagValues v_next = (i+1 < tagList.size() ? tagList.get(i + 1) : null);
-                HtmlTagValues v_pre = (i > 0 ? tagList.get(i - 1) : null);
-                HtmlTagValues v_column = (i - columnCount >= 0 ? tagList.get(i - columnCount) : null);
-                HtmlTagValues v_para = (i - paraCount >= 0 ? tagList.get(i - paraCount) : null);
-                gapLine = 0;
-                gapWord = 0;
-                //
-                if (i == 0){
-                	//come first
-                    lineTop = Double.valueOf(v.Top);
-                    lineLeft = Double.valueOf(v.Left);
-                    lineHeight = Double.valueOf(v.Height);
-                    lineRight = Double.valueOf(v.Left) + Double.valueOf(v.Width);
-                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
-                }
-                
-                objlinebottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
-                objlinetop.add(Double.valueOf(v.Top));
-                objlineleft.add(Double.valueOf(v.Left));
-                //
-                objcolright.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
-                objcolbottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
-                objcolleft.add(Double.valueOf(v.Left));
-                objcoltop.add(Double.valueOf(v.Top));
-                //
-                objpararight.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
-                objparatop.add(Double.valueOf(v.Top));
-                objparabottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
-                objparaleft.add(Double.valueOf(v.Left));
-                //
-                if (v_pre != null) {
-                    previousTop = Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
+        	if (tagList.size() > 0) {
 
-                    if (previousTop < 2) previousTop = 0;
-                }
-                if (v_next != null) {
-                	nextTop = Math.abs(Double.valueOf(v.Top) - Double.valueOf(v_next.Top));
-                    nextLeft = Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left));
-                    
-                    if (nextTop > 0) {
-                    	gapLine = Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - Double.valueOf(v_next.Top));	
-                    }
+	        	for (int i=0, len=tagList.size(); i<len; i++) {
 
-                    if (nextTop < 2) nextTop = 0;
-                    if (nextLeft < 2) nextLeft = 0;
-                    
-                    gapWord = Math.abs(Double.valueOf(v.Left) + Double.valueOf(v.Width) - Double.valueOf(v_next.Left));
-                }
+	                HtmlTagValues v = tagList.get(i);
+	                HtmlTagValues v_next = (i+1 < tagList.size() ? tagList.get(i + 1) : null);
+	                HtmlTagValues v_pre = (i > 0 ? tagList.get(i - 1) : null);
+	                HtmlTagValues v_column = (i - columnCount >= 0 ? tagList.get(i - columnCount) : null);
+	                HtmlTagValues v_para = (i - paraCount >= 0 ? tagList.get(i - paraCount) : null);
+	                gapLine = 0;
+	                gapWord = 0;
+	                //
+	                if (i == 0){
+	                	//come first
+	                    lineTop = Double.valueOf(v.Top);
+	                    lineLeft = Double.valueOf(v.Left);
+	                    lineHeight = Double.valueOf(v.Height);
+	                    lineRight = Double.valueOf(v.Left) + Double.valueOf(v.Width);
+	                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
+	                }
 
-                //for line
-                if (v_pre != null && previousTop > 0 
-                		&& Math.abs(Double.valueOf(v_pre.Top) + Double.valueOf(v_pre.Height) - (Double.valueOf(v.Top) + Double.valueOf(v.Height))) > 2) {
-                    lineTop = Double.valueOf(v.Top);
-                    lineLeft = Double.valueOf(v.Left);
-                    lineHeight = Double.valueOf(v.Height);
-                    lineRight = Double.valueOf(v.Left) + Double.valueOf(v.Width);
-                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
-                    //
-                }
+	                objlinebottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
+	                objlinetop.add(Double.valueOf(v.Top));
+	                objlineleft.add(Double.valueOf(v.Left));
+	                //
+	                objcolright.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
+	                objcolbottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
+	                objcolleft.add(Double.valueOf(v.Left));
+	                objcoltop.add(Double.valueOf(v.Top));
+	                //
+	                objpararight.add(Double.valueOf(v.Left) + Double.valueOf(v.Width));
+	                objparatop.add(Double.valueOf(v.Top));
+	                objparabottom.add(Double.valueOf(v.Top) + Double.valueOf(v.Height));
+	                objparaleft.add(Double.valueOf(v.Left));
+	                //
+	                if (v_pre != null) {
+	                    previousTop = Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
 
-                
-                
-                if ( (v_next != null && nextTop == 0 && gapWord < 15)
-                		|| (v_next != null && gapWord < 15 && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < 2)
-                		){
+	                    if (previousTop < 2) previousTop = 0;
+	                }
+	                if (v_next != null) {
+	                	nextTop = Math.abs(Double.valueOf(v.Top) - Double.valueOf(v_next.Top));
+	                    nextLeft = Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left));
 
-                	double gap =  Math.abs(Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left)) - Double.valueOf(v.Width));
-            		lineWidth += (Double.valueOf(v.Width) + gap);
+	                    if (nextTop > 0) {
+	                    	gapLine = Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - Double.valueOf(v_next.Top));
+	                    }
 
-            		double minLeft = Math.min(Double.valueOf(v.Left), Double.valueOf(v_next.Left));
-            		if (lineLeft > minLeft) {
-            			lineWidth -= (lineLeft - minLeft); 
-            		}
-            		lineLeft = Math.min(Math.min(lineLeft, Double.valueOf(v.Left)), Double.valueOf(v_next.Left));
-                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
+	                    if (nextTop < 2) nextTop = 0;
+	                    if (nextLeft < 2) nextLeft = 0;
 
-                } else {
-                	
-                    lineWidth += Double.valueOf(v.Width);
-                    
-                    double xheight = lineHeight, minlinetop = lineTop; 
-                    if (objlinebottom != null && objlinebottom.size() > 0 && objlinetop != null && objlinetop.size() > 0) {
-                    	minlinetop = Collections.min(objlinetop);
-                    	double maxlinebottom = Collections.max(objlinebottom);
-                    	xheight = maxlinebottom - minlinetop + 1;
-                    } 
-                    double xleft = Collections.min(objlineleft);
-                    objm.add(getDIV(minlinetop, xleft, xheight, lineWidth, "blue"));
-                    
-                    objlinetop.removeAll(objlinetop);
-                    objlineleft.removeAll(objlineleft);
-                    objlinebottom.removeAll(objlinebottom);
+	                    gapWord = Math.abs(Double.valueOf(v.Left) + Double.valueOf(v.Width) - Double.valueOf(v_next.Left));
+	                }
 
-                    //for column
-                    if (objcolleft != null && objcolleft.size() > 0 && lineLeft > Collections.min(objcolleft)) {
-                        double dLineWidth = (lineLeft - Collections.min(objcolleft) + 1) + lineWidth;
-                        objcol.add(dLineWidth);
-                    }else {
-                    	objcol.add(lineWidth);
-                    }
-                    if (objcoltop != null && objcoltop.size() > 0 && lineTop < Collections.min(objcoltop)) {
-                    	double dLineTop = (lineTop - Collections.min(objcoltop) + 1) + lineTop;
-                    	objcoltop.add(dLineTop);
-                    }else {
-                    	objcoltop.add(lineTop);
-                    }
-                    
-                    //for paragraph
-                    if (objparaleft != null && objparaleft.size() > 0 && lineLeft > Collections.min(objparaleft)) {
-                        double dLineWidth = (lineLeft - Collections.min(objparaleft) + 1) + lineWidth;
-                        objpara.add(dLineWidth);
-                    }else {
-                    	objpara.add(lineWidth);	
-                    }
-
-                    
-                    
-                    lineWidth = 0;
-                    //
-                }
+	                //for line
+	                if (v_pre != null && previousTop > 0
+	                		&& Math.abs(Double.valueOf(v_pre.Top) + Double.valueOf(v_pre.Height) - (Double.valueOf(v.Top) + Double.valueOf(v.Height))) > 2) {
+	                		//&& Math.abs(Double.valueOf(v_pre.Top) + Double.valueOf(v_pre.Height) - (Double.valueOf(v.Top) + Double.valueOf(v.Height))) > Math.max(Double.valueOf(v_pre.Height), Double.valueOf(v.Height))/2) {
+	                    lineTop = Double.valueOf(v.Top);
+	                    lineLeft = Double.valueOf(v.Left);
+	                    lineHeight = Double.valueOf(v.Height);
+	                    lineRight = Double.valueOf(v.Left) + Double.valueOf(v.Width);
+	                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
+	                    //
+	                }
 
 
-                //if new paragraph, all variables = first line
-                if (paraRound == 0) {
-                	paraTop = lineTop;
-                	paraLeft = lineLeft;
-                	paraHeight = lineHeight;
-                	paraWidth = lineWidth;
-                	clearPara = false;
-                	paraRound = 1;
-                } //else compare current parawidth with previous parawidth and increase para height
-                else {
-                    if (objpara.size() == 0) {
-                    	paraWidth = lineWidth;
-                    	paraLeft = lineLeft;
-                    } else {
-                    	paraWidth = Collections.max(objpara);
-                    	paraLeft = Collections.min(objparaleft);
-                    }
-                    if (v_pre != null) {
-                    	paraHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top)) + 1;
-                    }
-                }
-                //
-                //
-                if (((nextTop > 0 && gapLine > Double.valueOf(v.Height)/2) && nextTop > lineHeight)
-            		|| (v_next == null || (nextTop > Double.valueOf(v.Height)/2 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold")))
-            		|| (v_next == null || (nextTop > 0 && gapLine > Double.valueOf(v.Height)/2 && nextTop > lineHeight && Double.valueOf(v_next.Left) > lineLeft))
-            		) {
+	                if ( (v_next != null && nextTop == 0 && gapWord < 15)
+	                		//|| (v_next != null && gapWord < 15 && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < 2)
+	                		|| (v_next != null && gapWord < 15 && Math.abs(Double.valueOf(v.Top) + Double.valueOf(v.Height) - (Double.valueOf(v_next.Top) + Double.valueOf(v_next.Height))) < Math.max(Double.valueOf(v.Height), Double.valueOf(v_next.Height))/2)
+	                		){
 
-                    if (v_para != null) {
-                    	//
-                    	if (objpara != null && objpara.size() > 0) {
-                    		paraWidth = Collections.max(objpara);
-                    	}else {
-                    		paraWidth = lineWidth;
-                    	}
-                    	if (paraWidth == 0.0) paraWidth = Double.valueOf(v_para.Width);
-                    	
+	                	double gap =  Math.abs(Math.abs(Double.valueOf(v.Left) - Double.valueOf(v_next.Left)) - Double.valueOf(v.Width));
+	            		lineWidth += (Double.valueOf(v.Width) + gap);
 
-                    	double paraRight = 0;
-                    	if (objpararight != null && objpararight.size() > 0) {
-                    		paraRight = Collections.max(objpararight);	
-                    	}else {
-                    		paraRight = lineRight;
-                    	}
-                    	paraWidth = paraRight - paraLeft + 1; 
-                    	
+	            		double minLeft = Math.min(Double.valueOf(v.Left), Double.valueOf(v_next.Left));
+	            		if (lineLeft > minLeft) {
+	            			lineWidth -= (lineLeft - minLeft);
+	            		}
+	            		lineLeft = Math.min(Math.min(lineLeft, Double.valueOf(v.Left)), Double.valueOf(v_next.Left));
+	                    lineBottom = Double.valueOf(v.Top) + Double.valueOf(v.Height);
 
-                    	double paraBottom = 0;
-                    	if (objparabottom != null && objparabottom.size() > 0) {
-                    		paraBottom = Collections.max(objparabottom);	
-                    	}else {
-                    		paraBottom = lineBottom;
-                    	}
-                    	if (objparatop != null && objparatop.size() > 0) {
-                    		paraTop = Collections.min(objparatop);	
-                    	}
-                    	paraHeight = paraBottom - paraTop + 1; 
-                    	
-	                    objm.add(getDIV(paraTop, paraLeft, paraHeight, paraWidth, "green"));
-                    }
+	                } else {
 
-                    objpara.removeAll(objpara);
-                    objparaleft.removeAll(objparaleft);
-                    objpararight.removeAll(objpararight);
-                    objparatop.removeAll(objparatop);
-                    objparabottom.removeAll(objparabottom);
-                    paraTop = 0;
-                    paraLeft = 0;
-                    paraWidth = 0;
-                    paraHeight = 0;
-                    paraRound = 0;
-                    paraCount = 0;
-                    
-                } else {
-                    paraCount += 1;
-                }
-                
-                //if new column, all variables = first line
-                if (round == 0) {
-                    columnTop = lineTop;
-                    columnLeft = lineLeft;
-                    columnHeight = lineHeight;
-                    columnWidth = lineWidth;
-                    round = 1;
-                } //else compare current columnwidth with previous columnwidth and increase column height
-                else {
-                    if (objcol.size() == 0) {
-                        columnWidth = lineWidth;
-                        columnLeft = lineLeft;
-                        columnTop = lineTop;
-                    } else {
-                        columnWidth = Collections.max(objcol);
-                        columnLeft = Collections.min(objcolleft);
-                        columnTop = Collections.min(objcoltop);
-                    }
-                    if (v_pre != null) {
-                    	columnHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
-                    }
-                }
-                
-                 /*if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
-                 		|| (v_next == null || (nextTop > lineHeight*5))
-                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
-                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color))) // && Double.valueOf(v.FontSize) > 20))
-                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
-                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
-                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
-                 */
-                if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
-                 		|| (v_next == null || (nextTop > lineHeight*5))
-                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Math.abs(Double.valueOf(v.Height) - Double.valueOf(v_next.Height)) > 10))
-                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.Height) > 20))
-                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
-                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.Height) > 20 && Double.valueOf(v_next.Height) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
-                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.Height) <= 20 && Double.valueOf(v_next.Height) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
-                 		//|| (v_pre != null && v_pre.Word && nextLeft > Double.valueOf(v.Width))
-                 
-                	) {
-                	
-                    if (v_column != null) {
-                    	if (objcol != null && objcol.size() > 0) {
-                    		columnWidth = Collections.max(objcol);	
-                    	}else {
-                    		columnWidth = lineWidth;
-                    	}
-                    	if (objcoltop != null && objcoltop.size() > 0) {
-                    		columnTop = Collections.min(objcoltop);	
-                    	}else {
-                    		columnTop = lineTop;
-                    	}
-                    	
-                    	double columnRight = 0;
-                    	if (objcolright != null && objcolright.size() > 0) {
-                    		columnRight = Collections.max(objcolright);	
-                    	}else {
-                    		columnRight = lineRight;
-                    	}
-                    	columnWidth = columnRight - columnLeft + 1;
+	                    lineWidth += Double.valueOf(v.Width);
 
-                    	double columnBottom = 0;
-                    	if (objcolbottom != null && objcolbottom.size() > 0) {
-                    		columnBottom = Collections.max(objcolbottom);	
-                    	}else {
-                    		columnBottom = lineBottom;
-                    	}
-                    	columnHeight = columnBottom - columnTop + 1; 
-                    	
-                        objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
-                    }
-                    objcol.removeAll(objcol);
-                    objcolleft.removeAll(objcolleft);
-                    objcoltop.removeAll(objcoltop);
-                    objcolright.removeAll(objcolright);
-                    objcolbottom.removeAll(objcolbottom);
-                    columnTop = 0;
-                    columnLeft = 0;
-                    columnWidth = 0;
-                    columnHeight = 0;
-                    lineTop = 0;
-                    lineLeft = 0;
-                    lineWidth = 0;
-                    lineHeight = 0;
-                    lineRight = 0;
-                    round = 0;
-                    columnCount = 0;
-                } else {
-                    columnCount += 1;
-                }
-                
-                if (i == len - 1) {
-                	
-                	if (v_next != null && lineHeight > 1) {
-                		lineWidth += Double.valueOf(v_next.Width);
-                		paraWidth += lineWidth;
-                		columnWidth += lineWidth;
+	                    double xheight = lineHeight, minlinetop = lineTop;
+	                    if (objlinebottom != null && objlinebottom.size() > 0 && objlinetop != null && objlinetop.size() > 0) {
+	                    	minlinetop = Collections.min(objlinetop);
+	                    	double maxlinebottom = Collections.max(objlinebottom);
+	                    	xheight = maxlinebottom - minlinetop + 1;
+	                    }
+	                    double xleft = Collections.min(objlineleft);
+	                    objm.add(getDIV(minlinetop, xleft, xheight, lineWidth, "blue"));
 
-                        
-                        double xheight = lineHeight, minlinetop = lineTop; 
-                        if (objlinebottom != null && objlinebottom.size() > 0 && objlinetop != null && objlinetop.size() > 0) {
-                        	minlinetop = Collections.min(objlinetop);
-                        	double maxlinebottom = Collections.max(objlinebottom);
-                        	xheight = maxlinebottom - minlinetop + 1;
-                        } 
+	                    objlinetop.removeAll(objlinetop);
+	                    objlineleft.removeAll(objlineleft);
+	                    objlinebottom.removeAll(objlinebottom);
 
-                        double xleft = Collections.min(objlineleft);
-                        objm.add(getDIV(minlinetop, xleft, xheight, lineWidth, "blue"));
-                	}
-                    
-                    if (paraRound > 0) {
+	                    //for column
+	                    if (objcolleft != null && objcolleft.size() > 0 && lineLeft > Collections.min(objcolleft)) {
+	                        double dLineWidth = (lineLeft - Collections.min(objcolleft) + 1) + lineWidth;
+	                        objcol.add(dLineWidth);
+	                    }else {
+	                    	objcol.add(lineWidth);
+	                    }
+	                    if (objcoltop != null && objcoltop.size() > 0 && lineTop < Collections.min(objcoltop)) {
+	                    	double dLineTop = (lineTop - Collections.min(objcoltop) + 1) + lineTop;
+	                    	objcoltop.add(dLineTop);
+	                    }else {
+	                    	objcoltop.add(lineTop);
+	                    }
+
+	                    //for paragraph
+	                    if (objparaleft != null && objparaleft.size() > 0 && lineLeft > Collections.min(objparaleft)) {
+	                        double dLineWidth = (lineLeft - Collections.min(objparaleft) + 1) + lineWidth;
+	                        objpara.add(dLineWidth);
+	                    }else {
+	                    	objpara.add(lineWidth);
+	                    }
+
+
+
+	                    lineWidth = 0;
+	                    //
+	                }
+
+
+	                //if new paragraph, all variables = first line
+	                if (paraRound == 0) {
+	                	paraTop = lineTop;
+	                	paraLeft = lineLeft;
+	                	paraHeight = lineHeight;
+	                	paraWidth = lineWidth;
+	                	clearPara = false;
+	                	paraRound = 1;
+	                } //else compare current parawidth with previous parawidth and increase para height
+	                else {
+	                    if (objpara.size() == 0) {
+	                    	paraWidth = lineWidth;
+	                    	paraLeft = lineLeft;
+	                    } else {
+	                    	paraWidth = Collections.max(objpara);
+	                    	paraLeft = Collections.min(objparaleft);
+	                    }
+	                    if (v_pre != null) {
+	                    	paraHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top)) + 1;
+	                    }
+	                }
+	                //
+	                //
+	                if (((nextTop > 0 && gapLine > Double.valueOf(v.Height)/2) && nextTop > lineHeight)
+	            		|| (v_next == null || (nextTop > Double.valueOf(v.Height)/2 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold")))
+	            		|| (v_next == null || (nextTop > 0 && gapLine > Double.valueOf(v.Height)/2 && nextTop > lineHeight && Double.valueOf(v_next.Left) > lineLeft))
+	            		) {
+
 	                    if (v_para != null) {
+	                    	//
 	                    	if (objpara != null && objpara.size() > 0) {
 	                    		paraWidth = Collections.max(objpara);
 	                    	}else {
 	                    		paraWidth = lineWidth;
 	                    	}
 	                    	if (paraWidth == 0.0) paraWidth = Double.valueOf(v_para.Width);
-	                    	
+
 
 	                    	double paraRight = 0;
 	                    	if (objpararight != null && objpararight.size() > 0) {
-	                    		paraRight = Collections.max(objpararight);	
+	                    		paraRight = Collections.max(objpararight);
 	                    	}else {
 	                    		paraRight = lineRight;
 	                    	}
-	                    	paraWidth = paraRight - paraLeft + 1; 
-	                    	
+	                    	paraWidth = paraRight - paraLeft + 1;
+
 
 	                    	double paraBottom = 0;
 	                    	if (objparabottom != null && objparabottom.size() > 0) {
-	                    		paraBottom = Collections.max(objparabottom);	
+	                    		paraBottom = Collections.max(objparabottom);
 	                    	}else {
 	                    		paraBottom = lineBottom;
 	                    	}
 	                    	if (objparatop != null && objparatop.size() > 0) {
-	                    		paraTop = Collections.min(objparatop);	
+	                    		paraTop = Collections.min(objparatop);
 	                    	}
-	                    	paraHeight = paraBottom - paraTop + 1; 
-	                    	
+	                    	paraHeight = paraBottom - paraTop + 1;
+
 		                    objm.add(getDIV(paraTop, paraLeft, paraHeight, paraWidth, "green"));
 	                    }
-                    }
-                    
-                    if (round > 0) {
-                        if (v_column != null) {
-                        	if (objcol != null && objcol.size() > 0) {
-                        		columnWidth = Collections.max(objcol);	
-                        	}else {
-                        		columnWidth = lineWidth;
-                        	}
-                        	if (objcoltop != null && objcoltop.size() > 0) {
-                        		columnTop = Collections.min(objcoltop);	
-                        	}else {
-                        		columnTop = lineTop;
-                        	}
-                        	
-                        	double columnRight = 0;
-                        	if (objcolright != null && objcolright.size() > 0) {
-                        		columnRight = Collections.max(objcolright);	
-                        	}else {
-                        		columnRight = lineRight;
-                        	}
-                        	columnWidth = columnRight - columnLeft + 1;
 
-                        	double columnBottom = 0;
-                        	if (objcolbottom != null && objcolbottom.size() > 0) {
-                        		columnBottom = Collections.max(objcolbottom);	
-                        	}else {
-                        		columnBottom = lineBottom;
-                        	}
-                        	columnHeight = columnBottom - columnTop + 1; 
-                        	
-                            objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
-                        }
-                    }
-                    
-                    model.put(BOX, objm);
-                    BOX++;
-                    objm = new ArrayList<String>();
-                    objcol.removeAll(objcol);
-                    objcolleft.removeAll(objcolleft);
-                    objcoltop.removeAll(objcoltop);
-                    objcolright.removeAll(objcolright);
-                    objcolbottom.removeAll(objcolbottom);
-                    columnTop = 0;
-                    columnLeft = 0;
-                    columnWidth = 0;
-                    columnHeight = 0;
-                    paraTop = 0;
-                    paraLeft = 0;
-                    paraWidth = 0;
-                    paraHeight = 0;
-                    paraRound = 0;
-                    paraCount = 0;
-                    objpara.removeAll(objpara);
-                    objparaleft.removeAll(objparaleft);
-                    objparatop.removeAll(objparatop);
-                    objparabottom.removeAll(objparabottom);
-                    lineTop = 0;
-                    lineLeft = 0;
-                    lineWidth = 0;
-                    lineHeight = 0;
-                    lineRight = 0;
-                    lineBottom = 0;
-                    round = 0;
-                    columnCount = 0;
-                    objlinetop.removeAll(objlinetop);
-                    objlineleft.removeAll(objlineleft);
-                    objlinebottom.removeAll(objlinebottom);
+	                    objpara.removeAll(objpara);
+	                    objparaleft.removeAll(objparaleft);
+	                    objpararight.removeAll(objpararight);
+	                    objparatop.removeAll(objparatop);
+	                    objparabottom.removeAll(objparabottom);
+	                    paraTop = 0;
+	                    paraLeft = 0;
+	                    paraWidth = 0;
+	                    paraHeight = 0;
+	                    paraRound = 0;
+	                    paraCount = 0;
 
-                }
-            }
+	                } else {
+	                    paraCount += 1;
+	                }
+
+	                //if new column, all variables = first line
+	                if (round == 0) {
+	                    columnTop = lineTop;
+	                    columnLeft = lineLeft;
+	                    columnHeight = lineHeight;
+	                    columnWidth = lineWidth;
+	                    round = 1;
+	                } //else compare current columnwidth with previous columnwidth and increase column height
+	                else {
+	                    if (objcol.size() == 0) {
+	                        columnWidth = lineWidth;
+	                        columnLeft = lineLeft;
+	                        columnTop = lineTop;
+	                    } else {
+	                        columnWidth = Collections.max(objcol);
+	                        columnLeft = Collections.min(objcolleft);
+	                        columnTop = Collections.min(objcoltop);
+	                    }
+	                    if (v_pre != null) {
+	                    	columnHeight += Math.abs(Double.valueOf(v_pre.Top) - Double.valueOf(v.Top));
+	                    }
+	                }
+	                
+	                 /*if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+	                 		|| (v_next == null || (nextTop > lineHeight*5))
+	                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Math.abs(Double.valueOf(v.FontSize) - Double.valueOf(v_next.FontSize)) > 10))
+	                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color))) // && Double.valueOf(v.FontSize) > 20))
+	                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
+	                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.FontSize) > 20 && Double.valueOf(v_next.FontSize) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+	                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.FontSize) <= 20 && Double.valueOf(v_next.FontSize) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.FontSize) != Double.valueOf(v_next.FontSize)))
+	                 */
+	                if (((nextTop == 0 || v_next == null) && (v_next == null || (gapLine > Math.min(Double.valueOf(v.Height), Double.valueOf(v_next.Height))*1.8)))
+	                 		|| (v_next == null || (nextTop > lineHeight*5))
+	                 		|| (v_next == null || (nextTop > lineHeight && objcol != null && objcol.size() > 0 && nextLeft > Collections.max(objcol) && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Math.abs(Double.valueOf(v.Height) - Double.valueOf(v_next.Height)) > 10))
+	                 		|| (v_next == null || (nextTop > lineHeight && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left) && !v.Color.equals(v_next.Color) && Double.valueOf(v.Height) > 20))
+	                 		|| (v_next == null || (nextTop > lineHeight*3  && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height) && Double.valueOf(v.Left) != Double.valueOf(v_next.Left)))
+	                 		|| (v_next == null || (nextTop > lineHeight*2 && gapLine > 0 && Double.valueOf(v.Height) > 20 && Double.valueOf(v_next.Height) > 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
+	                 		|| (v_next == null || (nextTop > lineHeight*3 && Double.valueOf(v.Height) <= 20 && Double.valueOf(v_next.Height) <= 20 && !v.FontFamily.contains("Bold") && v_next.FontFamily.contains("Bold") && Double.valueOf(v.Height) != Double.valueOf(v_next.Height)))
+	                 		//|| (v_pre != null && v_pre.Word && nextLeft > Double.valueOf(v.Width))
+
+	                	) {
+
+	                    if (v_column != null) {
+	                    	if (objcol != null && objcol.size() > 0) {
+	                    		columnWidth = Collections.max(objcol);
+	                    	}else {
+	                    		columnWidth = lineWidth;
+	                    	}
+	                    	if (objcoltop != null && objcoltop.size() > 0) {
+	                    		columnTop = Collections.min(objcoltop);
+	                    	}else {
+	                    		columnTop = lineTop;
+	                    	}
+
+	                    	double columnRight = 0;
+	                    	if (objcolright != null && objcolright.size() > 0) {
+	                    		columnRight = Collections.max(objcolright);
+	                    	}else {
+	                    		columnRight = lineRight;
+	                    	}
+	                    	columnWidth = columnRight - columnLeft + 1;
+
+	                    	double columnBottom = 0;
+	                    	if (objcolbottom != null && objcolbottom.size() > 0) {
+	                    		columnBottom = Collections.max(objcolbottom);
+	                    	}else {
+	                    		columnBottom = lineBottom;
+	                    	}
+	                    	columnHeight = columnBottom - columnTop + 1;
+
+	                        objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
+	                    }
+	                    objcol.removeAll(objcol);
+	                    objcolleft.removeAll(objcolleft);
+	                    objcoltop.removeAll(objcoltop);
+	                    objcolright.removeAll(objcolright);
+	                    objcolbottom.removeAll(objcolbottom);
+	                    columnTop = 0;
+	                    columnLeft = 0;
+	                    columnWidth = 0;
+	                    columnHeight = 0;
+	                    lineTop = 0;
+	                    lineLeft = 0;
+	                    lineWidth = 0;
+	                    lineHeight = 0;
+	                    lineRight = 0;
+	                    round = 0;
+	                    columnCount = 0;
+	                } else {
+	                    columnCount += 1;
+	                }
+
+	                if (i == len - 1) {
+
+	                	if (v_next != null && lineHeight > 1) {
+	                		lineWidth += Double.valueOf(v_next.Width);
+	                		paraWidth += lineWidth;
+	                		columnWidth += lineWidth;
+
+
+	                        double xheight = lineHeight, minlinetop = lineTop;
+	                        if (objlinebottom != null && objlinebottom.size() > 0 && objlinetop != null && objlinetop.size() > 0) {
+	                        	minlinetop = Collections.min(objlinetop);
+	                        	double maxlinebottom = Collections.max(objlinebottom);
+	                        	xheight = maxlinebottom - minlinetop + 1;
+	                        }
+
+	                        double xleft = Collections.min(objlineleft);
+	                        objm.add(getDIV(minlinetop, xleft, xheight, lineWidth, "blue"));
+	                	}
+
+	                    if (paraRound > 0) {
+		                    if (v_para != null) {
+		                    	if (objpara != null && objpara.size() > 0) {
+		                    		paraWidth = Collections.max(objpara);
+		                    	}else {
+		                    		paraWidth = lineWidth;
+		                    	}
+		                    	if (paraWidth == 0.0) paraWidth = Double.valueOf(v_para.Width);
+
+
+		                    	double paraRight = 0;
+		                    	if (objpararight != null && objpararight.size() > 0) {
+		                    		paraRight = Collections.max(objpararight);
+		                    	}else {
+		                    		paraRight = lineRight;
+		                    	}
+		                    	paraWidth = paraRight - paraLeft + 1;
+
+
+		                    	double paraBottom = 0;
+		                    	if (objparabottom != null && objparabottom.size() > 0) {
+		                    		paraBottom = Collections.max(objparabottom);
+		                    	}else {
+		                    		paraBottom = lineBottom;
+		                    	}
+		                    	if (objparatop != null && objparatop.size() > 0) {
+		                    		paraTop = Collections.min(objparatop);
+		                    	}
+		                    	paraHeight = paraBottom - paraTop + 1;
+
+			                    objm.add(getDIV(paraTop, paraLeft, paraHeight, paraWidth, "green"));
+		                    }
+	                    }
+
+	                    if (round > 0) {
+	                        if (v_column != null) {
+	                        	if (objcol != null && objcol.size() > 0) {
+	                        		columnWidth = Collections.max(objcol);
+	                        	}else {
+	                        		columnWidth = lineWidth;
+	                        	}
+	                        	if (objcoltop != null && objcoltop.size() > 0) {
+	                        		columnTop = Collections.min(objcoltop);
+	                        	}else {
+	                        		columnTop = lineTop;
+	                        	}
+
+	                        	double columnRight = 0;
+	                        	if (objcolright != null && objcolright.size() > 0) {
+	                        		columnRight = Collections.max(objcolright);
+	                        	}else {
+	                        		columnRight = lineRight;
+	                        	}
+	                        	columnWidth = columnRight - columnLeft + 1;
+
+	                        	double columnBottom = 0;
+	                        	if (objcolbottom != null && objcolbottom.size() > 0) {
+	                        		columnBottom = Collections.max(objcolbottom);
+	                        	}else {
+	                        		columnBottom = lineBottom;
+	                        	}
+	                        	columnHeight = columnBottom - columnTop + 1;
+
+	                            objm.add(getDIV(columnTop, columnLeft, columnHeight, columnWidth, "red"));
+	                        }
+	                    }
+
+	                    model.put(BOX, objm);
+	                    BOX++;
+	                    objm = new ArrayList<String>();
+	                    objcol.removeAll(objcol);
+	                    objcolleft.removeAll(objcolleft);
+	                    objcoltop.removeAll(objcoltop);
+	                    objcolright.removeAll(objcolright);
+	                    objcolbottom.removeAll(objcolbottom);
+	                    columnTop = 0;
+	                    columnLeft = 0;
+	                    columnWidth = 0;
+	                    columnHeight = 0;
+	                    paraTop = 0;
+	                    paraLeft = 0;
+	                    paraWidth = 0;
+	                    paraHeight = 0;
+	                    paraRound = 0;
+	                    paraCount = 0;
+	                    objpara.removeAll(objpara);
+	                    objparaleft.removeAll(objparaleft);
+	                    objparatop.removeAll(objparatop);
+	                    objparabottom.removeAll(objparabottom);
+	                    lineTop = 0;
+	                    lineLeft = 0;
+	                    lineWidth = 0;
+	                    lineHeight = 0;
+	                    lineRight = 0;
+	                    lineBottom = 0;
+	                    round = 0;
+	                    columnCount = 0;
+	                    objlinetop.removeAll(objlinetop);
+	                    objlineleft.removeAll(objlineleft);
+	                    objlinebottom.removeAll(objlinebottom);
+
+	                }
+	            }
+        	}else {
+
+                model.put(BOX, objm);
+                BOX++;
+                objm = new ArrayList<String>();
+        	}
+
         }
-        
+
         return model;
     }
     private String getDIV(double TOP, double LEFT, double HEIGHT, double WIDTH, String color) {
@@ -1162,7 +1306,7 @@ public class PDFExtract {
 	 */
     private StringBuffer Normalize(StringBuffer htmlBuffer) throws Exception
 	{
-		InputStreamReader in = null;	
+		InputStreamReader in = null;
 		BufferedReader br = null;
 		try {
 
@@ -1179,13 +1323,13 @@ public class PDFExtract {
 			boolean bFoundFirstPage = false;
 			int iPageID = 0;
 			AtomicReference<Hashtable<String,Integer>> hashClasses = new AtomicReference<Hashtable<String,Integer>>();
-			
+
 			searchReplaceList = common.getSearchReplaceList();
 
-			while ((sLine = br.readLine()) != null) {				
-				if (sLine.indexOf(sStartPage) == -1 && !bFoundFirstPage) continue; 
+			while ((sLine = br.readLine()) != null) {
+				if (sLine.indexOf(sStartPage) == -1 && !bFoundFirstPage) continue;
 				else { bFoundFirstPage = true;}
-				
+
 				if (sLine.indexOf(sStartPage) == -1 && sLine.indexOf(sEndBody) == -1)
 					sbContentPage.append(sLine + "\n");
 
@@ -1194,24 +1338,24 @@ public class PDFExtract {
 				 */
 				if (sLine.indexOf(sStartPage) != -1)
 				{
-					
+
 					sPageTag = sLine;
 					sPageHeight = sPageTag.replaceAll(REGEX_HEIGHT, "$1");
 					sPageHidth = sPageTag.replaceAll(REGEX_WIDTH, "$1");
-	                
+
 					if (sbContentPage.toString().length() > 0) {
-						
-						
+
+
 						/**
 						 * End previous page
 						 */
 						iPageID++;
 						String sPageContent = sbContentPage.toString();
 						String pageContent = GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth);
-						sbPageAll.append(pageContent);		
+						sbPageAll.append(pageContent);
 						sbContentPage = new StringBuilder();
 					}
-					
+
 					sbContentPage.append(sLine + "\n");
 				}
 				else if (sLine.indexOf(sEndBody) != -1)
@@ -1219,27 +1363,27 @@ public class PDFExtract {
 
 					sPageHeight = sPageTag.replaceAll(REGEX_HEIGHT, "$1");
 					sPageHidth = sPageTag.replaceAll(REGEX_WIDTH, "$1");
-					
+
 					/**
 					 * End last page
 					 */
 					iPageID++;
 					String sPageContent = sbContentPage.toString();
-					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth));	
+					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth));
 					break;
 				}
 			}
-			
+
 			/** Get classes
-			- page - the wrapping boundary of a page. 
+			- page - the wrapping boundary of a page.
 			- header - the wrapping boundary of the page header.
 			- footer - the wrapping boundary of the page footer.
 			- column - the wrapping boundary of a column.
 			- line - the wrapping boundary of the paragraph line.
 			- h1 - the wrapping boundary of a the paragraph h1.
-			- h2 - the wrapping boundary of a the paragraph h2.		
+			- h2 - the wrapping boundary of a the paragraph h2.
 			 */
-			
+
 			AtomicReference<StringBuilder> sbPageAllNomalize = new AtomicReference<StringBuilder>();
 			sbPageAllNomalize.set(sbPageAll);
 			String sClasses = GetNormalizeClasses(hashClasses.get(),sbPageAllNomalize);
@@ -1247,12 +1391,12 @@ public class PDFExtract {
 			return new StringBuffer(GetTemplate(Tempate.body.toString())
 		    		.replace("[" + TempateContent.STYLE.toString() + "]",sClasses)
 		    		.replace("[" + TempateContent.BODY.toString() + "]",sbPageAllNomalize.get().toString()));
-			
+
 		} catch (Exception e1) {
 			e1.printStackTrace();
 			throw e1;
 		}
-		finally 
+		finally
 		{
 			try {
 				if (br != null) br.close();
@@ -1272,12 +1416,12 @@ public class PDFExtract {
 	{
 		StringBuilder _sbPageAll = sbPageAll.get();
 		StringBuilder sbClasses = new StringBuilder();
-		
+
 		Hashtable<Float,String> hashFontSize = new Hashtable<Float,String>();
 
 		String sGlobalStyle = "";
 		int iGlobalStyle = 0;
-		List<String> listClasse = new ArrayList<String>(hashClasses.keySet());	
+		List<String> listClasse = new ArrayList<String>(hashClasses.keySet());
 		for (String classes : listClasse) {
 			if (hashClasses.get(classes) > iGlobalStyle)
 			{
@@ -1285,7 +1429,7 @@ public class PDFExtract {
 				sGlobalStyle = classes;
 			}
 		}
-		
+
 		for (String classes : listClasse) {
 			if (!sGlobalStyle.equals(classes))
 			{
@@ -1302,18 +1446,18 @@ public class PDFExtract {
 			}
 		}
 		//(font\-family\:CAAAAA\+DejaVuSans\-Bold;font\-size:12\.46pt;font\-weight:bold;)
-		
-		
+
+
 		//replace global style
 		_sbPageAll = new StringBuilder(_sbPageAll.toString().replaceAll("\\n+", "\n").replace(sGlobalStyle, ""));
-		
+
 		sbClasses.append("body {");
 		sbClasses.append(sGlobalStyle);
 		sbClasses.append("}");
 		sbClasses.append("\np{");
 		sbClasses.append("border:1px solid green;");
 		sbClasses.append("}");
-		sbClasses.append("\n.page{"); 
+		sbClasses.append("\n.page{");
 		sbClasses.append("border:1px dashed silver;");
 		sbClasses.append("}");
 		sbClasses.append("\n.header{");
@@ -1330,11 +1474,11 @@ public class PDFExtract {
 		sbClasses.append("}");
 
 
-		List<Float> listFontSize = new ArrayList<Float>(hashFontSize.keySet());	
+		List<Float> listFontSize = new ArrayList<Float>(hashFontSize.keySet());
 		Collections.sort(listFontSize);
 		int iHCount = listFontSize.size();
 		for (float fontsize : listFontSize) {
-			
+
 			sbClasses.append("\n.h"+iHCount+" {");
 			sbClasses.append(hashFontSize.get(fontsize));
 			sbClasses.append("}");
@@ -1343,10 +1487,10 @@ public class PDFExtract {
 			iHCount--;
 		}
 		//sbClasses.append("}");
-		
+
 		sbPageAll.set(_sbPageAll);
-		
-		return sbClasses.toString();		
+
+		return sbClasses.toString();
 	}
 
 	/**
@@ -1357,7 +1501,7 @@ public class PDFExtract {
 	private String GetPageNormalizedHtml(String sContent,int iPageID, AtomicReference<Hashtable<String,Integer>> hashClasses, String pageWidth, String pageHeight)
 	{
 		String sPageNormalized = "";
-		
+
 		//Initial objects
 		Hashtable<Key,HTMLObject.BolderObject> hashColumn = new  Hashtable<Key,HTMLObject.BolderObject>();
 		Hashtable<Key,HTMLObject.BolderObject> hashParagraph = new  Hashtable<Key,HTMLObject.BolderObject>();
@@ -1380,14 +1524,14 @@ public class PDFExtract {
 			String sColor = mBorder.group(5);
 			oBolder.color = sColor;
 			if (sColor.equals("red"))
-				hashColumn.put(new Key(oBolder.top,oBolder.left), oBolder);				
+				hashColumn.put(new Key(oBolder.top,oBolder.left), oBolder);
 			else if (sColor.equals("green"))
 				hashParagraph.put(new Key(oBolder.top,oBolder.left), oBolder);
 			else if (sColor.equals("blue"))
 				hashLine.put(new Key(oBolder.top,oBolder.left), oBolder);
-		}	
-		
-		//Case not handle paragrapBorder 
+		}
+
+		//Case not handle paragrapBorder
 		if (hashParagraph.size() == 0)
 		{
 			hashParagraph = (Hashtable<Key, BolderObject>) hashColumn.clone();
@@ -1408,7 +1552,7 @@ public class PDFExtract {
 			oText.fontsize = RoundNumber(mText.group("fontsize"));
 			oText.right = oText.left + oText.width;
 			oText.bottom = oText.top + oText.lineheight;
-			
+
 			String sfontfamily = mText.group("fontfamily");
 			String sfontsize =  mText.group("fontsize");
 			String sfontweight = "";
@@ -1432,15 +1576,15 @@ public class PDFExtract {
 			oText.text = mText.group("text");
 
 			//get font style
-			String sFontStyle = "font-family:" + sfontfamily + ";" + "font-size:" + sfontsize + "pt;";			
+			String sFontStyle = "font-family:" + sfontfamily + ";" + "font-size:" + sfontsize + "pt;";
 			if (mText.group("fontweight") != null)
 				sFontStyle += "font-weight:" + sfontweight + ";";
-			
+
 			if (mText.group("fontstyle") != null)
 				sFontStyle += "font-style:" + sfontstyle + ";";
-		
+
 			oText.style = sFontStyle.replaceAll("(letter\\-spacing:(.*?)pt;)", "");
-					
+
 			if (hashText.containsKey(oText.top))
 			{
 				Hashtable<Integer,HTMLObject.TextObject> hashTextMember  = hashText.get(oText.top);
@@ -1454,55 +1598,55 @@ public class PDFExtract {
 				hashText.put(oText.top, hashTextMember);
 			}
 		}
-		
+
 		hashClasses.set(_hashClasses);
 
-		List<Key> listColumnLeft = new ArrayList<Key>(hashColumn.keySet());	
+		List<Key> listColumnLeft = new ArrayList<Key>(hashColumn.keySet());
 		Collections.sort(listColumnLeft, new KeyComparator());
 	    String sColumnAll = "";
-	    int iColumnID = 1; 	    
-	    
+	    int iColumnID = 1;
+
 	    //Loop each column
 	    for (Key columnKey : listColumnLeft) {
 
 	    	//System.out.println("column"+iColumnID+"==>" + columnKey.x + ":"+columnKey.y);
-	    	
+
 		    String sColumnParagraphAll = "";
 		    int iParagraphID = 1;
-	    	
+
 	    	HTMLObject.BolderObject oBolderColumn = hashColumn.get(columnKey);
-	    	
+
 	    	List<Key> listParagraphTop = new ArrayList<Key>(hashParagraph.keySet());
 			Collections.sort(listParagraphTop, new KeyComparator());
-		    
+
 		  //Loop each paragraph in column
 		    for (Key paragraphKey : listParagraphTop) {
-		    	
+
 		    	String sColumnParagraphLineAll = "";
 		    	HTMLObject.BolderObject oBolderParagraph = hashParagraph.get(paragraphKey);
 		    	if (CheckIsBoxInside(oBolderColumn,oBolderParagraph))
 		    	{
 
 			    	//System.out.println("paragraph"+iParagraphID+"==>" + paragraphKey.x + ":"+paragraphKey.y);
-			    	
+
 			    	List<Key> listLineTop = new ArrayList<Key>(hashLine.keySet());
 				    Collections.sort(listLineTop, new KeyComparator());
 				    int iLineID = 1;
 
 				    //Loop each line in paragraph
 				    for (Key lineKey : listLineTop) {
-					    
+
 				    	HTMLObject.BolderObject oBolderLine = hashLine.get(lineKey);
-				    
-				    	// <div class="p" id="p15" style="top:107.91202pt;left:45.354687pt;line-height:8.100006pt;font-family:Times;font-size:8.01pt;word-spacing:2.083961pt;color:#323232;width:23.994pt;">Lorem</div>				    
-				    	
+
+				    	// <div class="p" id="p15" style="top:107.91202pt;left:45.354687pt;line-height:8.100006pt;font-family:Times;font-size:8.01pt;word-spacing:2.083961pt;color:#323232;width:23.994pt;">Lorem</div>
+
 				    	if (CheckIsBoxInside(oBolderParagraph,oBolderLine))
 				    	{
-				    		
+
 				    		Hashtable<Float,HTMLObject.TextObject> hashTextInLine = new  Hashtable<Float,HTMLObject.TextObject>();
-				    		
+
 					    	//System.out.println("\tline"+iLineID+"==>" + lineKey.x + ":"+lineKey.y);
-					    	
+
 					    	List<Float> listText = new ArrayList<Float>(hashText.keySet());
 						    Collections.sort(listText);
 
@@ -1512,55 +1656,56 @@ public class PDFExtract {
 						    for (Float textTop : listText) {
 						    	if (textTop >= oBolderLine.top && textTop <= oBolderLine.bottom)
 						    	{
-							    	Hashtable<Integer,HTMLObject.TextObject> hashTextMember = hashText.get(textTop);		    	
+							    	Hashtable<Integer,HTMLObject.TextObject> hashTextMember = hashText.get(textTop);
 							    	List<Integer> listTextMember = new ArrayList<Integer>(hashTextMember.keySet());
 								    Collections.sort(listTextMember);
-								    
+
 								    for (Integer textMemberTop : listTextMember) {
-								    	
+
 								    	HTMLObject.TextObject oTextMemberObject = hashTextMember.get(textMemberTop);
-								    	
-								    	
+
+
 								    	if (oTextMemberObject.bottom <= oBolderLine.bottom && oTextMemberObject.left >= oBolderLine.left && oTextMemberObject.right <= oBolderLine.right)
 								    	{
 								    		sStyle = oTextMemberObject.style;
 								    		if (!hashTextInLine.containsKey(oTextMemberObject.left)) {
 								    			hashTextInLine.put(oTextMemberObject.left, oTextMemberObject);
-								    			
+
 								    			if (oTextMemberObject.text.indexOf('\uFFFD') > -1) {
 								    				if (oBolderLine.height > (oTextMemberObject.fontsize * 2) + 1) {
 								    					oBolderLine.height = (oTextMemberObject.fontsize * 2) + 1;
 								    				}
 								    			}
-								    			
-								    		}								    											    		
+
+								    		}
 								    	}
 								    }
 						    	}
-						    }	
+						    }
 						    List<Float> listTextInLine = new ArrayList<Float>(hashTextInLine.keySet());
 							Collections.sort(listTextInLine);
-							
+
 							int round = 0;
 							float prevRight = 0;
 							String prevText = "";
 							for (Float textInLineKey : listTextInLine) {
 								HTMLObject.TextObject oText = hashTextInLine.get(textInLineKey);
 								String text = oText.text;
-								 
+
 								text = common.replaceText(searchReplaceList, text);
-								 
-								if (oText.fontsize < oBolderLine.height && Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
-				    				
+
+								//if (oText.fontsize < oBolderLine.height && Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2) + 1) {
+								if (oText.fontsize < oBolderLine.height && Math.abs(oBolderLine.height - (oText.lineheight * 2)) <= (oText.fontsize / 2)) {
+
 				    			//<sup>
 									if (Math.abs(oText.top - oBolderLine.top) < 1) {
-				    					text = "<sup>" + text + "</sup>";	
+				    					text = "<sup>" + text + "</sup>";
 				    				}else {
 				    					text = "<sub>" + text + "</sub>";
 				    				}
-				    				
+
 								}
-								
+
 								if (round > 0 && oText.left - prevRight >= 0.2) {
 									/*if (prevText.equals(":")) {
 										
@@ -1568,19 +1713,19 @@ public class PDFExtract {
 									sLine += " ";
 								}
 								sLine += text;
-								
+
 								prevRight = oText.left + oText.width;
 								prevText = oText.text;
 								round++;
 							}
 							// System.out.println(sLine);
-						    
+
 							//add counting in classes object
 							if (_hashClasses.containsKey(sStyle))
 								_hashClasses.put(sStyle, _hashClasses.get(sStyle)+1);
 							else
 								_hashClasses.put(sStyle, 1);
-							
+
 						    String sColumnParagraphLine = GetTemplate(Tempate.columnparagraphline.toString())
 						    		.replace("[" + TempateID.COLUMNPARAGRAPHLINEID.toString() + "]"  , String.valueOf(iPageID) + "c" + String.valueOf(iColumnID) + "p" + String.valueOf(iParagraphID) + "l" + String.valueOf(iLineID))
 						    		.replace("[" + TempateStyle.TOP.toString() + "]" , String.valueOf(oBolderLine.top))
@@ -1589,7 +1734,7 @@ public class PDFExtract {
 						    		.replace("[" + TempateStyle.WIDTH.toString() + "]" , String.valueOf(oBolderLine.width))
 						    		.replace("[" + TempateStyle.LINESTYLE.toString() + "]" , sStyle)
 						    		.replace("[" + TempateContent.COLUMNPARAGRAPHLINE.toString() + "]" , sLine);
-						    
+
 						    //
 						    if (scriptEngine != null && sColumnParagraphLine.length() > 0) {
 
@@ -1597,48 +1742,48 @@ public class PDFExtract {
 				    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 				    			{
 				    				sColumnParagraphLine = sResult;
-				    			}		    			
-				            }	
-						    
+				    			}
+				            }
+
 						    sColumnParagraphLineAll += sColumnParagraphLine + "\n";
-						  
+
 					    	iLineID++;
 				    	}
 				    }
-				    				   
-				    
+
+
 				    if (scriptEngine != null && sColumnParagraphLineAll.length() > 0) {
-	    	
+
 				    	//call analyzeJoins
 		    			String sResult = common.getStr(invokeJS("analyzeJoins", sColumnParagraphLineAll , pdfLanguage));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
-		    			}	
-		    			
+		    			}
+
 		    			//call isHeader
 		    			sResult = common.getStr(invokeJS("isHeader", sColumnParagraphLineAll));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
 		    			}
-		    			
+
 		    			//call isFooter
 		    			sResult = common.getStr(invokeJS("isFooter", sColumnParagraphLineAll));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
 		    			}
-		            }	
-				    
+		            }
+
 				    String sColumnParagraph = GetTemplate(Tempate.columnparagraph.toString())
 				    		.replace("[" + TempateID.COLUMNPARAGRAPHID.toString() + "]" , String.valueOf(iPageID) + "c" + String.valueOf(iColumnID) + "p" + String.valueOf(iParagraphID))
 				    		.replace("[" + TempateStyle.TOP.toString() + "]" , String.valueOf(oBolderParagraph.top))
 				    		.replace("[" + TempateStyle.LEFT.toString() + "]" , String.valueOf(oBolderParagraph.left))
 				    		.replace("[" + TempateStyle.HEIGHT.toString() + "]" , String.valueOf(oBolderParagraph.height))
 				    		.replace("[" + TempateStyle.WIDTH.toString() + "]" , String.valueOf(oBolderParagraph.width))
-				    		.replace("[" + TempateContent.COLUMNPARAGRAPH.toString() + "]" , sColumnParagraphLineAll); 
-				    sColumnParagraphAll += sColumnParagraph;				    				   
+				    		.replace("[" + TempateContent.COLUMNPARAGRAPH.toString() + "]" , sColumnParagraphLineAll);
+				    sColumnParagraphAll += sColumnParagraph;
 			    	iParagraphID++;
 		    	}
 		    }
@@ -1649,17 +1794,17 @@ public class PDFExtract {
 		    		.replace("[" + TempateStyle.HEIGHT.toString() + "]" , String.valueOf(oBolderColumn.height))
 		    		.replace("[" + TempateStyle.WIDTH.toString() + "]" , String.valueOf(oBolderColumn.width))
 		    		.replace("[" + TempateContent.COLUMN.toString() + "]" , sColumnParagraphAll);
-	    		
+
 	    	sColumnAll += sColumn;
 		    iColumnID++;
 	    }
 	    sPageNormalized = GetTemplate(Tempate.page.toString())
 	    		.replace("[" + TempateID.PAGEID.toString() + "]" , String.valueOf(iPageID))
 	    		.replace("[" + TempateContent.PAGE.toString() + "]" , sColumnAll);
-	    
+
 		return sPageNormalized;
 	}
-	
+
 	private boolean CheckIsBoxInside(HTMLObject.BolderObject boxCover , HTMLObject.BolderObject boxInside)
 	{
 		float p = 0.1f;
@@ -1674,7 +1819,7 @@ public class PDFExtract {
 	{
 		if (number.length() == 0)
 			return 0;
-		else 
+		else
 		{
 			return  Float.parseFloat(number);
 		}
@@ -1695,11 +1840,11 @@ public class PDFExtract {
         			failFunctionList.add(function);
         		}
         	}
-			
+
         }
         return result;
 	}
-	
+
 
 	/**
 	 * Get template document
@@ -1780,7 +1925,7 @@ public class PDFExtract {
 
 	    @Override
 	    public int compare(Key o1, Key o2) {
-	    	
+
 	    	Float x1 = o1.x;
 	    	Float x2 = o2.x;
 	    	Float y1 = o1.y;
@@ -1801,7 +1946,7 @@ public class PDFExtract {
 	 * @since 1.0
 	 */
 	enum Tempate {
-		body , 
+		body ,
 		page,
 		header,
 		headerparagraph,headerparagraphline,
@@ -1810,10 +1955,10 @@ public class PDFExtract {
 		footer,
 		footerparagraph,footerparagraphline
 		}
-	
-	enum TempateContent { 
-		STYLE, 
-		BODY, 
+
+	enum TempateContent {
+		STYLE,
+		BODY,
 		PAGE,
 		HEADER,
 		HEADERPARAGRAPH,HEADERPARAGRAPHLINE,
@@ -1822,7 +1967,7 @@ public class PDFExtract {
 		FOOTER,
 		FOOTERPARAGRAPH,FOOTERPARAGRAPHLINE
 		}
-	
+
 	enum TempateID { PAGEID,
 		HEADERID,HEADERPARAGRAPHID,HEADERPARAGRAPHLINEID,
 		COLUMNID,COLUMNPARAGRAPHID,COLUMNPARAGRAPHLINEID,
