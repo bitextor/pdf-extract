@@ -1,8 +1,16 @@
 package com.java.app;
 
-import java.io.*;
-import java.net.URLConnection;
-import java.nio.charset.Charset;
+import ch.qos.logback.classic.Level;
+import com.java.classes.Common;
+import com.java.classes.HTMLObject;
+import com.java.classes.HTMLObject.BolderObject;
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,17 +22,13 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
 import javax.script.Invocable;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-
 import org.apache.commons.io.IOUtils;
 import org.apache.pdfbox.io.MemoryUsageSetting;
-import org.apache.pdfbox.multipdf.PDFMergerUtility;
 import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.fit.pdfdom.PDFDomTree;
 import org.fit.pdfdom.PDFDomTreeConfig;
 import org.fit.pdfdom.resource.HtmlResourceHandler;
@@ -33,12 +37,6 @@ import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.xml.sax.SAXException;
-
-import com.java.classes.Common;
-import com.java.classes.HTMLObject;
-import com.java.classes.HTMLObject.BolderObject;
-
-import ch.qos.logback.classic.Level;
 
 /**
  * @author      Anonymous
@@ -53,12 +51,12 @@ public class PDFExtract {
 
 	private String logPath = "";
 	private String customScript = "";
-	private String pdfLanguage = "";
+	//private String pdfLanguage = "";
 	private boolean writeLogFile = true;
 	private boolean loadEngineFail = false;
 	private boolean batchMode = false;
 	private Object lockerExtract = new Object();
-	private int debugMode = 1;
+	//private int debugMode = 1;
 	private int countThreadExtract = 0;
 	private Thread threadExtract = null;
 	private Invocable scriptEngine = null;
@@ -191,11 +189,6 @@ public class PDFExtract {
 				throw new Exception("Output file cannot be empty.");
 			}
 
-			if (!batchMode) {
-				pdfLanguage = language;
-				debugMode = debug;
-			}
-
 			/**
 			 * Get output directory from outputFile and create it if not exists
 			 */
@@ -240,14 +233,14 @@ public class PDFExtract {
             }
 
 
-            if (debugMode == 0) {
+            if (debug == 0) {
 
     			/**
     			 * Call function to normalize html
     			 */
 				//common.writeLog(logPath, inputFile, "Start Normalize...", false);
                 try {
-                	htmlBuffer = Normalize(htmlBuffer);
+                	htmlBuffer = Normalize(htmlBuffer, language);
                 }catch(Exception e) {
     				throw new Exception("Normalize fail.: " + e.getMessage());
                 }
@@ -324,8 +317,6 @@ public class PDFExtract {
 				if (scriptEngine == null) loadEngineFail = true;
 			}
 
-			pdfLanguage = language;
-			debugMode = debug;
 			if (threadCount == 0) threadCount = 1;
 	        int maxThreadCount = threadCount;
 
@@ -384,15 +375,15 @@ public class PDFExtract {
 	/**
 	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML format that is optimized for easy alignment across multiple language sources.
 	 *
-	 * @param InputStream Stream data for extraction
+	 * @param inputStream Stream data as ByteArray for extraction
 	 * @param language   The language of the file using ISO-639-1 codes when processing. If not specified then the default language rules will be used.
 	 * @param options    The control parameters
 	 * @param debug      Enable Debug/Display mode. This changes the output to a more visual format that renders as HTML in a browser.
 	 *
-	 * @return OutputStream Stream Out
+	 * @return ByteArrayOutputStream Stream Out
 	 * @since            1.0
 	 */
-	public OutputStream Extract(InputStream inputStream, String language, String options, int debug) throws Exception {
+	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, String language, String options, int debug) throws Exception {
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -407,11 +398,6 @@ public class PDFExtract {
 			 */
 			if (inputStream.available() <= 0) {
 				throw new Exception("Input Stream does not exist.");
-			}
-
-			if (!batchMode) {
-				pdfLanguage = language;
-				debugMode = debug;
 			}
 
 			StringBuffer htmlBuffer;
@@ -434,12 +420,12 @@ public class PDFExtract {
 				throw new Exception("paintHtmlBox fail.: " + e.getMessage());
 			}
 
-			if (debugMode == 0) {
+			if (debug == 0) {
 				/**
 				 * Call function to normalize html
 				 */
 				try {
-					htmlBuffer = Normalize(htmlBuffer);
+					htmlBuffer = Normalize(htmlBuffer, language);
 				} catch (Exception e) {
 					throw new Exception("Normalize fail.: " + e.getMessage());
 				}
@@ -448,8 +434,7 @@ public class PDFExtract {
 			/**
 			 * Write output stream
 			 */
-
-			OutputStream outputStream = new ByteArrayOutputStream();
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
 			IOUtils.write(htmlBuffer.toString(), outputStream, "UTF-8");
 
 			if (writeLogFile) {
@@ -577,6 +562,7 @@ public class PDFExtract {
 	 * @since 1.0
 	 */
     private StringBuffer convertPdfToHtml(InputStream inputStream) throws Exception {
+//		common.print("load inputStream");
         MemoryUsageSetting setupMainMemoryOnly = MemoryUsageSetting.setupMainMemoryOnly();
         PDDocument pdf = null;
         StringWriter output = null;
@@ -603,6 +589,7 @@ public class PDFExtract {
 	 * @since 1.0
 	 */
     private StringBuffer paintHtmlBox(StringBuffer htmlBuffer) throws Exception {
+//		common.print("paintHtmlBox");
         BufferedReader b_in = null;
         HashMap<Integer, List<HtmlTagValues>> hList = new HashMap<Integer, List<HtmlTagValues>>();
         int hPage = -1;
@@ -1304,7 +1291,7 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-    private StringBuffer Normalize(StringBuffer htmlBuffer) throws Exception
+    private StringBuffer Normalize(StringBuffer htmlBuffer, String language) throws Exception
 	{
 		InputStreamReader in = null;
 		BufferedReader br = null;
@@ -1351,7 +1338,7 @@ public class PDFExtract {
 						 */
 						iPageID++;
 						String sPageContent = sbContentPage.toString();
-						String pageContent = GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth);
+						String pageContent = GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth, language);
 						sbPageAll.append(pageContent);
 						sbContentPage = new StringBuilder();
 					}
@@ -1369,7 +1356,7 @@ public class PDFExtract {
 					 */
 					iPageID++;
 					String sPageContent = sbContentPage.toString();
-					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth));
+					sbPageAll.append(GetPageNormalizedHtml(sPageContent,iPageID,hashClasses,sPageHeight,sPageHidth, language));
 					break;
 				}
 			}
@@ -1498,7 +1485,7 @@ public class PDFExtract {
 	 *
 	 * @since 1.0
 	 */
-	private String GetPageNormalizedHtml(String sContent,int iPageID, AtomicReference<Hashtable<String,Integer>> hashClasses, String pageWidth, String pageHeight)
+	private String GetPageNormalizedHtml(String sContent,int iPageID, AtomicReference<Hashtable<String,Integer>> hashClasses, String pageWidth, String pageHeight, String language)
 	{
 		String sPageNormalized = "";
 
@@ -1755,7 +1742,7 @@ public class PDFExtract {
 				    if (scriptEngine != null && sColumnParagraphLineAll.length() > 0) {
 
 				    	//call analyzeJoins
-		    			String sResult = common.getStr(invokeJS("analyzeJoins", sColumnParagraphLineAll , pdfLanguage));
+		    			String sResult = common.getStr(invokeJS("analyzeJoins", sColumnParagraphLineAll , language));
 		    			if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length )
 		    			{
 		    				sColumnParagraphLineAll = sResult;
