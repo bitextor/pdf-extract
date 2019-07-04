@@ -119,7 +119,7 @@ public void Extract(String batchFile, String rulePath, int threadCount, String l
 
 3. Stream
 ```java
-public OutputStream Extract(InputStream inputStream, String language, String options, int debug) throws Exception
+public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, String language, String options, int debug) throws Exception
 ```
 
 PDFExtract may be used from within Java with the following import:
@@ -144,8 +144,8 @@ pdf.Extract(inputFile, outputFile, rulePath, language, options, debug);
 pdf.Extract(batchFile, rulePath, threadCount, language, options, debug);
 
 // Stream
-InputStream inputStream = new FileInputStream(inputFile);
-OutputStream outputStream = pdf.Extract(inputStream, language, options, debug);
+ByteArrayInputStream inputStream = new ByteArrayInputStream(Files.readAllBytes(new File(inputFile).toPath()));
+ByteArrayOutputStream outputStream = pdf.Extract(inputStream, language, options, debug);
 ```
 
 ### Python PDF Extraction Wrapper
