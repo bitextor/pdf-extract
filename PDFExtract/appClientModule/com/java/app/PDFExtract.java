@@ -257,7 +257,6 @@ public class PDFExtract2 {
     			 */
                 try {
                 	htmlBuffer = drawHtmlBox(htmlBuffer);
-                	common.WriteFile(inputFile + ".box.html", htmlBuffer.toString());
                 }catch(Exception e) {
     				throw new Exception("drawHtmlBox fail.: " + e.getMessage());
                 }
