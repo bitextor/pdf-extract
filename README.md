@@ -466,7 +466,7 @@ The processing has been optimized and multithreaded. Reducing a large file can t
 2. Batch File Tests, 10 Files, 10 Threads
 
 | Name | Size (KB) | Test 1 | Test 2 | Test 3 | V1 Reference |
-| --- | --- | --- | --- | --- |
+| --- | --- | --- | --- | --- | --- |
 | sample.pdf | 2.96 | 00:00.797 | 00:00.791 | 00:01.151 | 00:01.570 |
 | sample2.pdf | 34.72 | 00:01.224 | 00:01.377 | 00:01.367 | 00:02.452 |
 | sample3.pdf | 597.78 | 00:02.680 | 00:02.542 | 00:02.374 | 00:07.693 |
@@ -486,8 +486,6 @@ The below list is a set of features planned for future:
   - In order to join sentences, the language must be known. Some simplistic rules can be applied using the analyzeJoins JavaScript that deal with language specific joins or the join logic can be handled externally. Future versions will have the option to use models to assist in the decision to join lines or to keep them split.
 - Handle tables
   - While columns are detected and handled, table detection is very complex and difficult. This is outside of the scope of the intial project version. As most alignable content is not in tables, this does not have a major impact on the outcome of bilingual corpus processing.
-- Performance Optimization
-  - There are a number of areas that have been identified for performance optimization. We will work on those areas next.
 
 ----
 ## FAQ
