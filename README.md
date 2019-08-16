@@ -452,17 +452,25 @@ Both of these look the same. But the "fi" in A is the letter "f" and "i" while t
 A list of these characters can be found in the file `search-replace.tab` in the same folder as the PDFExtract.jar file. Additional search and replace characters can be added as needed. This search and replace is performed when processing words and merging them into lines.
 
 ## Performance
-The processing has been optimized and multithreaded. Reducing a large file can take some time. A 50MB PDF can be extracted, cleaned and stored in as little 10K, depending on the content.
+The processing has been optimized and multithreaded. Reducing a large file can take some time. A 50MB PDF can be extracted, cleaned and stored in as little 10K, depending on the content. Performance has more than doubled since version 1.
 
-| Name | Size (KB) | Start |End | Duration |
+1. Single File Tests
+
+| Name | Size (KB) | Test 1 | Test 2 | Test 3 | V1 Reference |
+| --- | --- | --- | --- | --- | --- |
+| sample.pdf | 2.96 | 00:00.655 | 00:00.662 | 00:00.626 | 00:01.630 |
+| sample2.pdf | 34.72 | 00:00.917 | 00:00.909 | 00:00.922 | 00:01.698 |
+| sample3.pdf | 597.78 | 00:02.141 | 00:01.801 | 00:02.234 | 00:04.034 |
+| sample4.pdf | 3,462.57 | 00:30.616 | 00:32.910 | 00:30.157 | 01:38.810 |
+
+2. Batch File Tests, 10 Files, 10 Threads
+
+| Name | Size (KB) | Test 1 | Test 2 | Test 3 | V1 Reference |
 | --- | --- | --- | --- | --- |
-| sample.pdf | 2.96 | 13:30:12.870 | 13:30:14.500 | 00:00:01.630 |
-| sample2.pdf | 34.72 | 13:30:12.971 | 13:30:14.669| 00:00:01.698 |
-| sample3.pdf | 597.78 | 13:30:13.710 | 13:30:17.744 | 00:00:04.034|
-| sample4.pdf | 3,462.57 | 13:30:13.176 | 13:31:51.986 | 00:01:38.810|
-
-
-TODO - BATCH PERFORMANCE VS SINGLE FILE PERFORMANCE
+| sample.pdf | 2.96 | 00:00.797 | 00:00.791 | 00:01.151 | 00:01.570 |
+| sample2.pdf | 34.72 | 00:01.224 | 00:01.377 | 00:01.367 | 00:02.452 |
+| sample3.pdf | 597.78 | 00:02.680 | 00:02.542 | 00:02.374 | 00:07.693 |
+| sample4.pdf | 3,462.57 | 00:39.176 | 00:36.036 | 00:31.357 | 03:35.353 |
 
 
 ## TODO
