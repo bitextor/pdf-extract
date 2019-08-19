@@ -17,6 +17,9 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Hashtable;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,10 +53,7 @@ public class PDFExtract {
 	private String customScript = "";
 	private boolean writeLogFile = true;
 	private boolean loadEngineFail = false;
-	private boolean batchMode = false;
 	private Object lockerExtract = new Object();
-	private int countThreadExtract = 0;
-	private Thread threadExtract = null;
 	private Invocable scriptEngine = null;
 	private List<String> failFunctionList = new ArrayList<String>();
 	private Pattern patternP = Pattern.compile("<div class=\"p\"");
@@ -88,6 +88,7 @@ public class PDFExtract {
 
 	private HashMap<String, String> searchReplaceList = new HashMap<String, String>();
 	private Common common = new Common();
+	ExecutorService executor;
 
 	private void initial(String logFilePath) throws Exception {
 		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory
@@ -159,7 +160,8 @@ public class PDFExtract {
 	 *                   more visual format that renders as HTML in a browser.
 	 *
 	 */
-	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options, int debug) throws Exception {
+	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options,
+			int debug) throws Exception {
 
 		try {
 			if (writeLogFile) {
@@ -232,7 +234,8 @@ public class PDFExtract {
 				throw e;
 			}
 
-			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(new ArrayList<PageObject>());
+			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(
+					new ArrayList<PageObject>());
 			/**
 			 * Call function to paint html box
 			 */
@@ -283,11 +286,6 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
-			if (batchMode) {
-				synchronized (lockerExtract) {
-					countThreadExtract--;
-				}
-			}
 		}
 
 	}
@@ -317,10 +315,9 @@ public class PDFExtract {
 	 *                    more visual format that renders as HTML in a browser.
 	 *
 	 */
-	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug) throws Exception {
+	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug)
+			throws Exception {
 		try {
-			batchMode = true;
-
 			if (writeLogFile) {
 				if (runnable)
 					common.print("Start extract batch file: " + batchFile);
@@ -356,30 +353,29 @@ public class PDFExtract {
 			 * Read batch file
 			 */
 			List<String> lines = common.readLines(batchFile);
+			executor = Executors.newFixedThreadPool(maxThreadCount);
 
 			int ind = 0, len = lines.size();
 			while (ind < len) {
+				String line = lines.get(ind);
 
-				if (countThreadExtract < maxThreadCount) {
-					String line = lines.get(ind);
-
-					//Skip the empty line
-					if (common.IsEmpty(line)) {
-						ind++;
-						continue;
-					}
-
-					AddThreadExtract(ind, line, rulePath, language, options, debug);
+				/**
+				 * Skip the empty line
+				 */
+				if (common.IsEmpty(line)) {
 					ind++;
+					continue;
 				}
 
-				Thread.sleep(100);
+				AddThreadExtract(ind, line, rulePath, language, options, debug);
+				ind++;
 			}
-
+			executor.shutdown();
+			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 			/**
 			 * Wait for all thread finish
 			 */
-			threadExtract.join();
+			// threadExtract.join();
 
 		} catch (Exception e) {
 			String message = e.getMessage();
@@ -415,7 +411,8 @@ public class PDFExtract {
 	 *
 	 * @return ByteArrayOutputStream Stream Out
 	 */
-	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, String language, String options, int debug) throws Exception {
+	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, String language, String options, int debug)
+			throws Exception {
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -443,7 +440,8 @@ public class PDFExtract {
 				throw e;
 			}
 
-			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(new ArrayList<PageObject>());
+			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(
+					new ArrayList<PageObject>());
 			/**
 			 * Call function to paint html box
 			 */
@@ -494,11 +492,6 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
-			if (batchMode) {
-				synchronized (lockerExtract) {
-					countThreadExtract--;
-				}
-			}
 		}
 	}
 
@@ -507,14 +500,9 @@ public class PDFExtract {
 	 */
 	private void AddThreadExtract(int index, String line, String rulePath, String language, String options, int debug) {
 		try {
-			String threadName = "ext-" + index;
-
-			synchronized (lockerExtract) {
-				countThreadExtract++;
-			}
-			threadExtract = new Thread(threadName) {
+			executor.execute(new Runnable() {
+				@Override
 				public void run() {
-
 					String inputFile = "", outputFile = "";
 					try {
 
@@ -543,19 +531,11 @@ public class PDFExtract {
 						} else {
 							common.print(inputFile, "Error: " + message);
 						}
-
-						synchronized (lockerExtract) {
-							countThreadExtract--;
-						}
 					}
 				}
-			};
-			threadExtract.start();
+			});
 
 		} catch (Exception ex) {
-			synchronized (lockerExtract) {
-				countThreadExtract--;
-			}
 			String message = ex.toString();
 			if (writeLogFile) {
 				if (runnable)
@@ -632,13 +612,15 @@ public class PDFExtract {
 	/**
 	 * Get HTML Box
 	 */
-	private StringBuffer getHtmlBox(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages) throws Exception {
+	private StringBuffer getHtmlBox(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages)
+			throws Exception {
 		BufferedReader b_in = null;
 		StringBuffer htmlBufferOut = new StringBuffer();
 		List<PageObject> pages = refPages.get();
 		try {
 
-			InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()), StandardCharsets.UTF_8);
+			InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()),
+					StandardCharsets.UTF_8);
 			b_in = new BufferedReader(i_in);
 			String line = "";
 			int currentPage = 0;
@@ -654,12 +636,12 @@ public class PDFExtract {
 					line = line.replaceAll(".*src.*>", "");
 					line = line.replaceAll("<div class=\"r\" style.*", "");
 
-					if (!common.IsEmpty(line.trim())){
-						htmlBufferOut.append(line + "\n");	
+					if (!common.IsEmpty(line.trim())) {
+						htmlBufferOut.append(line + "\n");
 					}
 				} else if (m.find()) {
 					htmlBufferOut.append(line + "\n");
-					
+
 					TextObject text = getTextObject(line);
 					if (!checkLineAdd(page.width, page.height, text)) {
 						continue;
@@ -668,7 +650,7 @@ public class PDFExtract {
 					page.texts.add(text);
 				} else if (m1.find()) {
 					if (line.indexOf("/>") > -1) {
-						//fix blank page
+						// fix blank page
 						line = line.substring(0, line.lastIndexOf("/>")) + "></div>";
 					}
 					htmlBufferOut.append(line + "\n");
@@ -756,16 +738,17 @@ public class PDFExtract {
 	/**
 	 * Draw box to html
 	 */
-	private StringBuffer drawHtmlBox(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages) throws IOException {
+	private StringBuffer drawHtmlBox(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages)
+			throws IOException {
 		StringBuffer htmlBufferOut = new StringBuffer();
 		List<PageObject> pages = refPages.get();
 		try {
 			int nPage = 0;
 			String sContent = htmlBuffer.toString();
-			
+
 			Matcher m = patternPageStartTag.matcher(sContent);
 			while (m.find()) {
-		        m.appendReplacement(htmlBufferOut, "$0\n");
+				m.appendReplacement(htmlBufferOut, "$0\n");
 
 				PageObject page = pages.get(nPage);
 				for (ColumnObject column : page.columnList) {
@@ -778,14 +761,14 @@ public class PDFExtract {
 					}
 				}
 				nPage++;
-		    }
-		    m.appendTail(htmlBufferOut);
+			}
+			m.appendTail(htmlBufferOut);
 		} finally {
 		}
 
 		return htmlBufferOut;
 	}
-	
+
 	/**
 	 * Get boxes
 	 */
@@ -842,7 +825,9 @@ public class PDFExtract {
 					 * LINE
 					 */
 					if (i == 0 || texts.size() == 0 || (prev_text != null && diff_top_prev == 0 && gap_word_prev > 15)
-							|| (prev_text != null && diff_top_prev > 0 && Math.abs(prev_text.top + prev_text.height - (text.top + text.height)) > 2 && diff_top_prev > line.height)) {
+							|| (prev_text != null && diff_top_prev > 0
+									&& Math.abs(prev_text.top + prev_text.height - (text.top + text.height)) > 2
+									&& diff_top_prev > line.height)) {
 						// start new line
 						line = new LineObject(text.top, text.left, text.height, text.width);
 					} else {
@@ -850,8 +835,9 @@ public class PDFExtract {
 						line.left = Math.min(line.left, text.left);
 						line.bottom = Math.max(line.bottom, text.bottom);
 						line.right = Math.max(line.right, text.right);
-						line.width = line.right - line.left;
-						line.height = line.bottom - line.top;
+						line.width = line.right - line.left + 1;
+						// line.height = line.bottom - line.top + 1;
+						line.height = Math.max(line.height, text.height);
 					}
 
 					if (!texts.contains(text)) {
@@ -859,7 +845,9 @@ public class PDFExtract {
 					}
 
 					if ((next_text != null && diff_top_next == 0 && gap_word_next < 15)
-							|| (next_text != null && gap_word_next < 15 && Math.abs(text.top + text.height - (next_text.top + next_text.height)) < Math.max(text.height, next_text.height) / 2)) {
+							|| (next_text != null && gap_word_next < 15
+									&& Math.abs(text.top + text.height - (next_text.top + next_text.height)) < Math
+											.max(text.height, next_text.height) / 2)) {
 						// next text is same line
 						double gap = Math.abs(Math.abs(text.left - next_text.left) - text.width);
 						line.width += (gap);
@@ -889,25 +877,32 @@ public class PDFExtract {
 						paragraph.left = Math.min(paragraph.left, line.left);
 						paragraph.bottom = Math.max(paragraph.bottom, line.bottom);
 						paragraph.right = Math.max(paragraph.right, line.right);
-						paragraph.height = paragraph.bottom - paragraph.top;
-						paragraph.width = paragraph.right - paragraph.left;
+						paragraph.height = paragraph.bottom - paragraph.top + 1;
+						paragraph.width = paragraph.right - paragraph.left + 1;
 					}
 
 					if (lines.size() > 0
 							&& ((diff_top_next > 0 && gap_line > (text.height / 2) && diff_top_next > line.height)
-									// || (next_text == null || (diff_top_next > text.height/2 && !text.fontfamily.contains("Bold") && next_text.fontfamily.contains("Bold")))
-									|| (next_text == null || (diff_top_next > 0 && gap_line > text.height / 2 && diff_top_next > line.height && next_text.left > line.left)))) {
+									|| (next_text == null
+											|| (diff_top_next > text.height / 2 && !text.fontfamily.contains("Bold")
+													&& next_text.fontfamily.contains("Bold")))
+									|| (diff_top_next > 0 && line.left < text.left
+											&& (next_text == null
+													|| (gap_line > Math.min(text.height, next_text.height) * 2)))
+									|| (next_text == null || (diff_top_next > 0 && gap_line > text.height / 2
+											&& diff_top_next > line.height && next_text.left > line.left)))) {
 
 						// end paragraph
 						if (paragraph != null) {
 							paragraph.color = BoxColor.PARAGRAPH.getColor();
-							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width, BoxColor.PARAGRAPH.getColor());
+							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width,
+									BoxColor.PARAGRAPH.getColor());
 							paragraph.lineList.addAll(lines);
 							paragraphs.add(paragraph);
 							lines.clear();
 							texts.clear();
+							paragraph = null;
 						}
-						paragraph = null;
 						// line = null;
 					}
 
@@ -922,31 +917,31 @@ public class PDFExtract {
 						column.left = Math.min(column.left, line.left);
 						column.bottom = Math.max(column.bottom, line.bottom);
 						column.right = Math.max(column.right, line.right);
-						column.height = column.bottom - column.top;
-						column.width = column.right - column.left;
+						column.height = column.bottom - column.top + 1;
+						column.width = column.right - column.left + 1;
 					}
 
-					if (
-					paragraphs.size() > 0 && ((
+					if (paragraphs.size() > 0 && (
 
-							/*
-							 * next top not same + left not same + gap more than min height*1.8
-							 */
-							(diff_top_next > 0 && line.left < text.left && (next_text == null || (gap_line > Math.min(text.height, next_text.height) * 1.8))))
+					/*
+					 * next top not same + left not same + gap more than min height*1.8
+					 */
+					(diff_top_next > 0 && line.left < text.left
+							&& (next_text == null || (gap_line > Math.min(text.height, next_text.height) * 2)))
 
-							/*diff top more than line height time 5*/
+							/* diff top more than line height time 5 */
 							|| (next_text == null || (diff_top_next > line.height * 5))
 
 							/*
 							 * diff top more than line height + height not same + diff height more than 10
 							 */
-							//|| (next_text == null || (diff_top_next > line.height && next_text.left > column.left && text.height != next_text.height && Math.abs(text.height - next_text.height) > 10 ))
+							|| (next_text == null || (diff_top_next > line.height && next_text.left > column.left
+									&& text.height != next_text.height
+									&& Math.abs(text.height - next_text.height) > 10))
 
 							/*
-							 * diff top more than line height + text not bold 
-							 * + next text is bold + height not same 
-							 * + left not same + color not same 
-							 * + big height
+							 * diff top more than line height + text not bold + next text is bold + height
+							 * not same + left not same + color not same + big height
 							 */
 							|| (next_text == null || (diff_top_next > line.height && !text.fontfamily.contains("Bold")
 									&& next_text.fontfamily.contains("Bold") && text.height != next_text.height
@@ -954,18 +949,16 @@ public class PDFExtract {
 									&& text.height > 20))
 
 							/*
-							 * diff top more than line height time 3 
-							 * + text not bold + next text is bold 
-							 * + height not same + left not same
+							 * diff top more than line height time 3 + text not bold + next text is bold +
+							 * height not same + left not same
 							 */
 							|| (next_text == null || (diff_top_next > line.height * 3
 									&& !text.fontfamily.contains("Bold") && next_text.fontfamily.contains("Bold")
 									&& text.height != next_text.height && text.left != next_text.left))
 
 							/*
-							 * diff top more than line height time 2 + text not bold 
-							 * + next text is bold + height not same 
-							 * + has gap line + big height
+							 * diff top more than line height time 2 + text not bold + next text is bold +
+							 * height not same + has gap line + big height
 							 */
 							|| (next_text == null
 									|| (diff_top_next > line.height * 2 && !text.fontfamily.contains("Bold")
@@ -973,9 +966,8 @@ public class PDFExtract {
 											&& gap_line > 0 && text.height > 20 && next_text.height > 20))
 
 							/*
-							 * diff top more than line height time 3 + text not bold + next text is bold 
-							 * + height not same + not big height 
-							 * + next not big height
+							 * diff top more than line height time 3 + text not bold + next text is bold +
+							 * height not same + not big height + next not big height
 							 */
 							|| (next_text == null
 									|| (diff_top_next > line.height * 3 && !text.fontfamily.contains("Bold")
@@ -985,16 +977,17 @@ public class PDFExtract {
 						// end column
 						if (column != null) {
 							column.color = BoxColor.COLUMN.getColor();
-							column.html = getDIV(column.top, column.left, column.height, column.width, BoxColor.COLUMN.getColor());
+							column.html = getDIV(column.top, column.left, column.height, column.width,
+									BoxColor.COLUMN.getColor());
 							column.paragraphList.addAll(paragraphs);
 							columns.add(column);
-							
+
 							paragraphs.clear();
 							paragraph = null;
 							lines.clear();
 							texts.clear();
+							column = null;
 						}
-						column = null;
 						// line = null;
 					}
 
@@ -1003,14 +996,16 @@ public class PDFExtract {
 						if (paragraph != null) {
 							paragraph.width += line.width;
 							paragraph.color = BoxColor.PARAGRAPH.getColor();
-							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width, BoxColor.PARAGRAPH.getColor());
+							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width,
+									BoxColor.PARAGRAPH.getColor());
 							paragraph.lineList.addAll(lines);
 							paragraphs.add(paragraph);
 						}
 						if (column != null) {
 							column.width += line.width;
 							column.color = BoxColor.COLUMN.getColor();
-							column.html = getDIV(column.top, column.left, column.height, column.width, BoxColor.COLUMN.getColor());
+							column.html = getDIV(column.top, column.left, column.height, column.width,
+									BoxColor.COLUMN.getColor());
 							column.paragraphList.addAll(paragraphs);
 							columns.add(column);
 						}
@@ -1038,7 +1033,8 @@ public class PDFExtract {
 	/**
 	 * Normalize html
 	 */
-	private StringBuffer Normalize(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages, String language) throws Exception {
+	private StringBuffer Normalize(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages, String language)
+			throws Exception {
 		List<PageObject> pages = refPages.get();
 		try {
 			StringBuilder sbPageAll = new StringBuilder();
@@ -1075,13 +1071,14 @@ public class PDFExtract {
 	/**
 	 * Get normalize classes
 	 */
-	private String GetNormalizeClasses(Hashtable<String, Integer> hashClasses, AtomicReference<StringBuilder> sbPageAll) {
+	private String GetNormalizeClasses(Hashtable<String, Integer> hashClasses,
+			AtomicReference<StringBuilder> sbPageAll) {
 		StringBuilder _sbPageAll = sbPageAll.get();
 		StringBuilder sbClasses = new StringBuilder();
 		Hashtable<Float, String> hashFontSize = new Hashtable<Float, String>();
 		String sGlobalStyle = "";
 		int iGlobalStyle = 0;
-		
+
 		List<String> listClasse = new ArrayList<String>(hashClasses.keySet());
 		for (String classes : listClasse) {
 			if (hashClasses.get(classes) > iGlobalStyle) {
@@ -1155,7 +1152,8 @@ public class PDFExtract {
 	/**
 	 * Get page normalize html
 	 */
-	private String GetPageNormalizedHtml(PageObject page, AtomicReference<Hashtable<String, Integer>> hashClasses, String language) {
+	private String GetPageNormalizedHtml(PageObject page, AtomicReference<Hashtable<String, Integer>> hashClasses,
+			String language) {
 		String sPageNormalized = "";
 		Hashtable<String, Integer> _hashClasses = hashClasses.get();
 		if (_hashClasses == null)
@@ -1198,9 +1196,24 @@ public class PDFExtract {
 					String sLine = "";
 					// Loop each text in line
 					for (TextObject text : listText) {
-						//if (text.fontsize < line.height && Math.abs(line.height - (text.height * 2)) <= (text.fontsize / 2) + 1) {
-						if (text.fontsize < line.height && Math.abs(line.height - (text.height * 2)) <= (text.fontsize / 2)) {
-						//if (text.fontsize * 2 <= line.height) {
+						if (text.text.indexOf('\uFFFD') > -1) {
+							if (line.height > (text.fontsize * 2) + 1) {
+								line.height = (text.fontsize * 2) + 1;
+								line.bottom = line.top + line.height;
+							}
+						}
+						sStyle = text.style;
+						// add counting in classes object
+						if (_hashClasses.containsKey(sStyle))
+							_hashClasses.put(sStyle, _hashClasses.get(sStyle) + 1);
+						else
+							_hashClasses.put(sStyle, 1);
+					}
+
+					for (TextObject text : listText) {
+						if (text.fontsize < line.height && (text.bottom < line.bottom - (line.height / 2) + 1
+								|| text.top > line.bottom - (line.height / 2) + 1
+								|| (line.height - text.height > 1 && text.height - text.fontsize > 2))) {
 							// <sup>
 							if (Math.abs(text.top - line.top) < 1) {
 								text.text = "<sup>" + text.text + "</sup>";
@@ -1222,11 +1235,14 @@ public class PDFExtract {
 						else
 							_hashClasses.put(sStyle, 1);
 					}
+
 					sLine = common.replaceText(searchReplaceList, sLine);
 					sStyle = "";
 
 					String sColumnParagraphLine = GetTemplate(Tempate.columnparagraphline.toString())
-							.replace("[" + TempateID.COLUMNPARAGRAPHLINEID.toString() + "]", common.getStr(iPageID) + "c" + common.getStr(iColumnID) + "p" + common.getStr(iParagraphID) + "l" + common.getStr(iLineID))
+							.replace("[" + TempateID.COLUMNPARAGRAPHLINEID.toString() + "]",
+									common.getStr(iPageID) + "c" + common.getStr(iColumnID) + "p"
+											+ common.getStr(iParagraphID) + "l" + common.getStr(iLineID))
 							.replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(line.top))
 							.replace("[" + TempateStyle.LEFT.toString() + "]", common.getStr(line.left))
 							.replace("[" + TempateStyle.HEIGHT.toString() + "]", common.getStr(line.height))
@@ -1266,7 +1282,9 @@ public class PDFExtract {
 				}
 
 				String sColumnParagraph = GetTemplate(Tempate.columnparagraph.toString())
-						.replace("[" + TempateID.COLUMNPARAGRAPHID.toString() + "]", common.getStr(iPageID) + "c" + common.getStr(iColumnID) + "p" + common.getStr(iParagraphID))
+						.replace("[" + TempateID.COLUMNPARAGRAPHID.toString() + "]",
+								common.getStr(iPageID) + "c" + common.getStr(iColumnID) + "p"
+										+ common.getStr(iParagraphID))
 						.replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(paragraph.top))
 						.replace("[" + TempateStyle.LEFT.toString() + "]", common.getStr(paragraph.left))
 						.replace("[" + TempateStyle.HEIGHT.toString() + "]", common.getStr(paragraph.height))
@@ -1277,7 +1295,9 @@ public class PDFExtract {
 
 			}
 			String sColumn = GetTemplate(Tempate.column.toString())
-					.replace("[" + TempateID.COLUMNID.toString() + "]", common.getStr(iPageID) + "c" + common.getStr(iColumnID)) .replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(column.top))
+					.replace("[" + TempateID.COLUMNID.toString() + "]",
+							common.getStr(iPageID) + "c" + common.getStr(iColumnID))
+					.replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(column.top))
 					.replace("[" + TempateStyle.LEFT.toString() + "]", common.getStr(column.left))
 					.replace("[" + TempateStyle.HEIGHT.toString() + "]", common.getStr(column.height))
 					.replace("[" + TempateStyle.WIDTH.toString() + "]", common.getStr(column.width))
