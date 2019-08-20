@@ -88,7 +88,8 @@ public class PDFExtract {
 
 	private HashMap<String, String> searchReplaceList = new HashMap<String, String>();
 	private Common common = new Common();
-	ExecutorService executor;
+	private ExecutorService executor;
+	private static float fontSizeScale = 1;
 
 	private void initial(String logFilePath) throws Exception {
 		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory
@@ -1092,7 +1093,7 @@ public class PDFExtract {
 				float fFontSize = common.getFloat(classes.replaceAll(REGEX_FONTSIZE, "$1"));
 				for (int i = 0; i < 10; i++) {
 					if (hashFontSize.containsKey(fFontSize)) {
-						fFontSize = (float) (fFontSize + 1);
+						fFontSize = (float) (fFontSize + fontSizeScale);
 					} else
 						break;
 				}
@@ -1228,12 +1229,6 @@ public class PDFExtract {
 						prevRight = text.left + text.width;
 						round++;
 						sStyle = text.style;
-
-						// add counting in classes object
-						if (_hashClasses.containsKey(sStyle))
-							_hashClasses.put(sStyle, _hashClasses.get(sStyle) + 1);
-						else
-							_hashClasses.put(sStyle, 1);
 					}
 
 					sLine = common.replaceText(searchReplaceList, sLine);
