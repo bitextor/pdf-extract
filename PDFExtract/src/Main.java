@@ -7,17 +7,14 @@ import pdfextract.PDFExtract;
 public class Main {
 	public static void main(String[] args) {
 		try {
-
 			Common common = new Common();
 
 			if (args == null || args.length == 0 || args[0].equals("--help")) {
-
 				/**
 				 * Print out help
 				 */
 				common.printHelp();
 				System.exit(0);
-
 			}
 
 			String input = "", output = "", batchfile = "", options = "", logpath = "", rulepath = "", threadcount = "",
@@ -106,5 +103,4 @@ public class Main {
 	public Main() {
 		super();
 	}
-
 }

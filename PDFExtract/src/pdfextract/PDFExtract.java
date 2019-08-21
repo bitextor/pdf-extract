@@ -471,7 +471,7 @@ public class PDFExtract {
 			}
 			executor.shutdown();
 			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-			
+
 		} catch (Exception e) {
 			String message = e.getMessage();
 			if (writeLogFile) {
@@ -1098,7 +1098,7 @@ public class PDFExtract {
 
 		// replace global style
 		_sbPageAll = new StringBuilder(_sbPageAll.toString().replaceAll("\\n+", "\n").replace(sGlobalStyle, ""));
-		
+
 		sbClasses.append("body {");
 		sbClasses.append(sGlobalStyle);
 		sbClasses.append("}");
