@@ -9,7 +9,6 @@ import java.util.List;
 public class HTMLObject {
 
 	public static class BoxObject {
-		public int type;
 		public String color = "";
 		public float top;
 		public float bottom;
@@ -42,12 +41,11 @@ public class HTMLObject {
 		public String fontweight;
 		public String fontstyle;
 		public float wordspacing;
-		public String color = "";
 
 	}
 
 	public static class LineObject extends BoxObject {
-		public List<TextObject> textList = new ArrayList<TextObject>();
+		public List<TextObject> texts = new ArrayList<TextObject>();
 
 		public LineObject() {
 		}
@@ -64,7 +62,7 @@ public class HTMLObject {
 	}
 
 	public static class ParagraphObject extends BoxObject {
-		public List<LineObject> lineList = new ArrayList<LineObject>();
+		public List<LineObject> lines = new ArrayList<LineObject>();
 
 		public ParagraphObject() {
 		}
@@ -81,7 +79,7 @@ public class HTMLObject {
 	}
 
 	public static class ColumnObject extends BoxObject {
-		public List<ParagraphObject> paragraphList = new ArrayList<ParagraphObject>();
+		public List<ParagraphObject> paragraphs = new ArrayList<ParagraphObject>();
 
 		public ColumnObject() {
 		}
@@ -102,6 +100,6 @@ public class HTMLObject {
 		public float width;
 		public float height;
 		public List<TextObject> texts = new ArrayList<TextObject>();
-		public List<ColumnObject> columnList = new ArrayList<ColumnObject>();
+		public List<ColumnObject> columns = new ArrayList<ColumnObject>();
 	}
 }

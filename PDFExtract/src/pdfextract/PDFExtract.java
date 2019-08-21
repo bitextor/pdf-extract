@@ -89,7 +89,7 @@ public class PDFExtract {
 	private HashMap<String, String> searchReplaceList = new HashMap<String, String>();
 	private Common common = new Common();
 	private ExecutorService executor;
-	private static float fontSizeScale = 1;
+	private static float fontSizeScale = 0.5f;
 
 	private void initial(String logFilePath) throws Exception {
 		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory
@@ -295,113 +295,6 @@ public class PDFExtract {
 	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML
 	 * format that is optimized for easy alignment across multiple language sources.
 	 *
-	 * @param batchFile   The path to the batch file for processing list of files.
-	 *                    The input file and output file are specified on the same
-	 *                    line delimited by a tab. Each line is delimited by a new
-	 *                    line character.
-	 * @param rulePath    The path of a custom set of rules to process joins between
-	 *                    lines. If no path is specified, then PDFExtract.js will be
-	 *                    loaded from the same folder as the PDFExtract.jar
-	 *                    execution. If the PDFExtract.js file cannot be found, then
-	 *                    processing will continue without analyzing the joins
-	 *                    between lines.
-	 * @param threadCount The number of threads to run concurrently when processing
-	 *                    PDF files. One file can be processed per thread. If not
-	 *                    specified, then the default valur of 1 thread is used.
-	 * @param language    The language of the file using ISO-639-1 codes when
-	 *                    processing. If not specified then the default language
-	 *                    rules will be used.
-	 * @param options     The control parameters
-	 * @param debug       Enable Debug/Display mode. This changes the output to a
-	 *                    more visual format that renders as HTML in a browser.
-	 *
-	 */
-	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug)
-			throws Exception {
-		try {
-			if (writeLogFile) {
-				if (runnable)
-					common.print("Start extract batch file: " + batchFile);
-				common.writeLog(logPath, "Start extract batch file: " + batchFile);
-			} else {
-				common.print("Start extract batch file: " + batchFile);
-			}
-
-			/**
-			 * Check input file exists
-			 */
-			if (!common.IsExist(batchFile)) {
-				throw new Exception("Input batch file does not exist.");
-			}
-
-			/**
-			 * Read rule script and load into object
-			 */
-			if (common.IsEmpty(customScript)) {
-				customScript = common.getCustomScript(rulePath, customScript);
-			}
-			if (!common.IsEmpty(customScript)) {
-				scriptEngine = common.getJSEngine(customScript);
-				if (scriptEngine == null)
-					loadEngineFail = true;
-			}
-
-			if (threadCount == 0)
-				threadCount = 1;
-			int maxThreadCount = threadCount;
-
-			/**
-			 * Read batch file
-			 */
-			List<String> lines = common.readLines(batchFile);
-			executor = Executors.newFixedThreadPool(maxThreadCount);
-
-			int ind = 0, len = lines.size();
-			while (ind < len) {
-				String line = lines.get(ind);
-
-				/**
-				 * Skip the empty line
-				 */
-				if (common.IsEmpty(line)) {
-					ind++;
-					continue;
-				}
-
-				AddThreadExtract(ind, line, rulePath, language, options, debug);
-				ind++;
-			}
-			executor.shutdown();
-			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-			/**
-			 * Wait for all thread finish
-			 */
-			// threadExtract.join();
-
-		} catch (Exception e) {
-			String message = e.getMessage();
-			if (writeLogFile) {
-				common.writeLog(logPath, message, true);
-			} else {
-				if (!runnable)
-					common.print("Error: " + e.getMessage());
-			}
-			throw e;
-		} finally {
-			if (writeLogFile) {
-				if (runnable)
-					common.print("Finish extract batch file: " + batchFile);
-				common.writeLog(logPath, "Finish extract batch file: " + batchFile);
-			} else {
-				common.print("Finish extract batch file: " + batchFile);
-			}
-		}
-	}
-
-	/**
-	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML
-	 * format that is optimized for easy alignment across multiple language sources.
-	 *
 	 * @param inputStream Stream data as ByteArray for extraction
 	 * @param language    The language of the file using ISO-639-1 codes when
 	 *                    processing. If not specified then the default language
@@ -493,6 +386,109 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
+		}
+	}
+
+	/**
+	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML
+	 * format that is optimized for easy alignment across multiple language sources.
+	 *
+	 * @param batchFile   The path to the batch file for processing list of files.
+	 *                    The input file and output file are specified on the same
+	 *                    line delimited by a tab. Each line is delimited by a new
+	 *                    line character.
+	 * @param rulePath    The path of a custom set of rules to process joins between
+	 *                    lines. If no path is specified, then PDFExtract.js will be
+	 *                    loaded from the same folder as the PDFExtract.jar
+	 *                    execution. If the PDFExtract.js file cannot be found, then
+	 *                    processing will continue without analyzing the joins
+	 *                    between lines.
+	 * @param threadCount The number of threads to run concurrently when processing
+	 *                    PDF files. One file can be processed per thread. If not
+	 *                    specified, then the default valur of 1 thread is used.
+	 * @param language    The language of the file using ISO-639-1 codes when
+	 *                    processing. If not specified then the default language
+	 *                    rules will be used.
+	 * @param options     The control parameters
+	 * @param debug       Enable Debug/Display mode. This changes the output to a
+	 *                    more visual format that renders as HTML in a browser.
+	 *
+	 */
+	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug)
+			throws Exception {
+		try {
+			if (writeLogFile) {
+				if (runnable)
+					common.print("Start extract batch file: " + batchFile);
+				common.writeLog(logPath, "Start extract batch file: " + batchFile);
+			} else {
+				common.print("Start extract batch file: " + batchFile);
+			}
+
+			/**
+			 * Check input file exists
+			 */
+			if (!common.IsExist(batchFile)) {
+				throw new Exception("Input batch file does not exist.");
+			}
+
+			/**
+			 * Read rule script and load into object
+			 */
+			if (common.IsEmpty(customScript)) {
+				customScript = common.getCustomScript(rulePath, customScript);
+			}
+			if (!common.IsEmpty(customScript)) {
+				scriptEngine = common.getJSEngine(customScript);
+				if (scriptEngine == null)
+					loadEngineFail = true;
+			}
+
+			if (threadCount == 0)
+				threadCount = 1;
+			int maxThreadCount = threadCount;
+
+			/**
+			 * Read batch file
+			 */
+			List<String> lines = common.readLines(batchFile);
+			executor = Executors.newFixedThreadPool(maxThreadCount);
+
+			int ind = 0, len = lines.size();
+			while (ind < len) {
+				String line = lines.get(ind);
+
+				/**
+				 * Skip the empty line
+				 */
+				if (common.IsEmpty(line)) {
+					ind++;
+					continue;
+				}
+
+				AddThreadExtract(ind, line, rulePath, language, options, debug);
+				ind++;
+			}
+			executor.shutdown();
+			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+			
+		} catch (Exception e) {
+			String message = e.getMessage();
+			if (writeLogFile) {
+				common.writeLog(logPath, message, true);
+			} else {
+				if (!runnable)
+					common.print("Error: " + e.getMessage());
+			}
+			throw e;
+		} finally {
+			if (writeLogFile) {
+				if (runnable)
+					common.print("Finish extract batch file: " + batchFile);
+				common.writeLog(logPath, "Finish extract batch file: " + batchFile);
+			} else {
+				common.print("Finish extract batch file: " + batchFile);
+			}
 		}
 	}
 
@@ -651,7 +647,7 @@ public class PDFExtract {
 					page.texts.add(text);
 				} else if (m1.find()) {
 					if (line.indexOf("/>") > -1) {
-						// fix blank page
+						// fix for blank page
 						line = line.substring(0, line.lastIndexOf("/>")) + "></div>";
 					}
 					htmlBufferOut.append(line + "\n");
@@ -752,11 +748,11 @@ public class PDFExtract {
 				m.appendReplacement(htmlBufferOut, "$0\n");
 
 				PageObject page = pages.get(nPage);
-				for (ColumnObject column : page.columnList) {
+				for (ColumnObject column : page.columns) {
 					htmlBufferOut.append(column.html + "\n");
-					for (ParagraphObject paragraph : column.paragraphList) {
+					for (ParagraphObject paragraph : column.paragraphs) {
 						htmlBufferOut.append(paragraph.html + "\n");
-						for (LineObject line : paragraph.lineList) {
+						for (LineObject line : paragraph.lines) {
 							htmlBufferOut.append(line.html + "\n");
 						}
 					}
@@ -837,7 +833,6 @@ public class PDFExtract {
 						line.bottom = Math.max(line.bottom, text.bottom);
 						line.right = Math.max(line.right, text.right);
 						line.width = line.right - line.left + 1;
-						// line.height = line.bottom - line.top + 1;
 						line.height = Math.max(line.height, text.height);
 					}
 
@@ -858,7 +853,7 @@ public class PDFExtract {
 						if (line != null) {
 							line.color = BoxColor.LINE.getColor();
 							line.html = getDIV(line.top, line.left, line.height, line.width, BoxColor.LINE.getColor());
-							line.textList.addAll(texts);
+							line.texts.addAll(texts);
 							if (!lines.contains(line)) {
 								lines.add(line);
 							}
@@ -898,7 +893,7 @@ public class PDFExtract {
 							paragraph.color = BoxColor.PARAGRAPH.getColor();
 							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width,
 									BoxColor.PARAGRAPH.getColor());
-							paragraph.lineList.addAll(lines);
+							paragraph.lines.addAll(lines);
 							paragraphs.add(paragraph);
 							lines.clear();
 							texts.clear();
@@ -980,7 +975,7 @@ public class PDFExtract {
 							column.color = BoxColor.COLUMN.getColor();
 							column.html = getDIV(column.top, column.left, column.height, column.width,
 									BoxColor.COLUMN.getColor());
-							column.paragraphList.addAll(paragraphs);
+							column.paragraphs.addAll(paragraphs);
 							columns.add(column);
 
 							paragraphs.clear();
@@ -999,7 +994,7 @@ public class PDFExtract {
 							paragraph.color = BoxColor.PARAGRAPH.getColor();
 							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width,
 									BoxColor.PARAGRAPH.getColor());
-							paragraph.lineList.addAll(lines);
+							paragraph.lines.addAll(lines);
 							paragraphs.add(paragraph);
 						}
 						if (column != null) {
@@ -1007,10 +1002,10 @@ public class PDFExtract {
 							column.color = BoxColor.COLUMN.getColor();
 							column.html = getDIV(column.top, column.left, column.height, column.width,
 									BoxColor.COLUMN.getColor());
-							column.paragraphList.addAll(paragraphs);
+							column.paragraphs.addAll(paragraphs);
 							columns.add(column);
 						}
-						page.columnList.addAll(columns);
+						page.columns.addAll(columns);
 						columns.clear();
 						paragraphs.clear();
 						lines.clear();
@@ -1101,11 +1096,9 @@ public class PDFExtract {
 			}
 		}
 
-		if (!common.IsEmpty(sGlobalStyle)) {
-			// replace global style
-			_sbPageAll = new StringBuilder(_sbPageAll.toString().replaceAll("\\n+", "\n").replace(sGlobalStyle, ""));
-		}
-
+		// replace global style
+		_sbPageAll = new StringBuilder(_sbPageAll.toString().replaceAll("\\n+", "\n").replace(sGlobalStyle, ""));
+		
 		sbClasses.append("body {");
 		sbClasses.append(sGlobalStyle);
 		sbClasses.append("}");
@@ -1143,7 +1136,6 @@ public class PDFExtract {
 					"$1$2 h" + iHCount + "$3$5"));
 			iHCount--;
 		}
-		// sbClasses.append("}");
 
 		sbPageAll.set(_sbPageAll);
 
@@ -1162,7 +1154,7 @@ public class PDFExtract {
 
 		int iPageID = page.pageno;
 
-		List<ColumnObject> listColumnLeft = page.columnList;
+		List<ColumnObject> listColumnLeft = page.columns;
 		Collections.sort(listColumnLeft, new BoxComparator());
 		String sColumnAll = "";
 		int iColumnID = 1;
@@ -1173,7 +1165,7 @@ public class PDFExtract {
 			String sColumnParagraphAll = "";
 			int iParagraphID = 1;
 
-			List<ParagraphObject> listParagraph = column.paragraphList;
+			List<ParagraphObject> listParagraph = column.paragraphs;
 			Collections.sort(listParagraph, new BoxComparator());
 
 			// Loop each paragraph in column
@@ -1181,7 +1173,7 @@ public class PDFExtract {
 
 				String sColumnParagraphLineAll = "";
 
-				List<LineObject> listLine = paragraph.lineList;
+				List<LineObject> listLine = paragraph.lines;
 				Collections.sort(listLine, new BoxComparator());
 
 				// Loop each line in paragraph
@@ -1189,7 +1181,7 @@ public class PDFExtract {
 				float prevRight = 0;
 				for (LineObject line : listLine) {
 
-					List<TextObject> listText = line.textList;
+					List<TextObject> listText = line.texts;
 					Collections.sort(listText, new TextComparator());
 
 					int round = 0;
@@ -1211,6 +1203,7 @@ public class PDFExtract {
 							_hashClasses.put(sStyle, 1);
 					}
 
+					// Loop each text in line
 					for (TextObject text : listText) {
 						if (text.fontsize < line.height && (text.bottom < line.bottom - (line.height / 2) + 1
 								|| text.top > line.bottom - (line.height / 2) + 1
@@ -1323,7 +1316,6 @@ public class PDFExtract {
 					failFunctionList.add(function);
 				}
 			}
-
 		}
 		return result;
 	}
