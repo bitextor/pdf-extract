@@ -6,6 +6,9 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.io.Writer;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.HashMap;
@@ -549,5 +552,48 @@ public class Common {
 		}
 
 		return rtext;
+	}
+	
+	public String getStackTrace(Exception exception) {
+		String text = "";
+		Writer writer = null;
+		try {
+			writer = new StringWriter();
+			PrintWriter printWriter = new PrintWriter(writer);
+			exception.printStackTrace(printWriter);
+			text = writer.toString();
+		} catch (Exception e) {
+
+		} finally {
+			if (writer != null) {
+				try {
+					writer.close();
+				} catch (IOException e) {
+
+				}
+			}
+		}
+		return text;
+	}
+	
+	public String getOutputError(Exception e) {
+
+		StringBuffer html = new StringBuffer("");
+		html.append("<html>" + "\n");
+		html.append("<error>" + "\n");
+		html.append("<message>" + "\n");
+		html.append("<![CDATA[" + "\n");
+		html.append(e.getMessage() + "\n");
+		html.append("]]>" + "\n");
+		html.append("</message>" + "\n");
+		html.append("<stacktrace>" + "\n");
+		html.append("<![CDATA[" + "\n");
+		html.append(getStackTrace(e) + "\n");
+		html.append("]]>" + "\n");
+		html.append("</stacktrace>" + "\n");
+		html.append("</error>" + "\n");
+		html.append("</html>" + "\n");
+		
+		return html.toString();
 	}
 }

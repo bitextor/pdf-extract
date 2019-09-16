@@ -164,6 +164,7 @@ public class PDFExtract {
 	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options,
 			int debug) throws Exception {
 
+		String outputPath = "";
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -181,10 +182,18 @@ public class PDFExtract {
 			}
 
 			/**
-			 * Check input file extension
+			 * Check output file not empty
 			 */
-			if (!common.getExtension(inputFile).toLowerCase().equals("pdf")) {
-				throw new Exception("Input file extension is not pdf.");
+			if (common.IsEmpty(outputFile)) {
+				throw new Exception("Output file cannot be empty.");
+			}
+
+			/**
+			 * Get output directory from outputFile and create it if not exists
+			 */
+			outputPath = common.getParentPath(outputFile);
+			if (!common.IsEmpty(outputPath) && !common.IsExist(outputPath)) {
+				common.createDir(outputPath);
 			}
 
 			if (runnable) {
@@ -195,18 +204,10 @@ public class PDFExtract {
 			}
 
 			/**
-			 * Check output file not empty
+			 * Check input file extension
 			 */
-			if (common.IsEmpty(outputFile)) {
-				throw new Exception("Output file cannot be empty.");
-			}
-
-			/**
-			 * Get output directory from outputFile and create it if not exists
-			 */
-			String outputPath = common.getParentPath(outputFile);
-			if (!common.IsEmpty(outputPath) && !common.IsExist(outputPath)) {
-				common.createDir(outputPath);
+			if (!common.getExtension(inputFile).toLowerCase().equals("pdf")) {
+				throw new Exception("Input file extension is not pdf.");
 			}
 
 			/**
@@ -229,22 +230,14 @@ public class PDFExtract {
 			/**
 			 * Call function to convert PDF to HTML
 			 */
-			try {
-				htmlBuffer = convertPdfToHtml(inputFile);
-			} catch (Exception e) {
-				throw e;
-			}
+			htmlBuffer = convertPdfToHtml(inputFile);
 
 			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(
 					new ArrayList<PageObject>());
 			/**
 			 * Call function to paint html box
 			 */
-			try {
-				htmlBuffer = getHtmlBox(htmlBuffer, refPages);
-			} catch (Exception e) {
-				throw new Exception("getHtmlBox fail.: " + e.getMessage());
-			}
+			htmlBuffer = getHtmlBox(htmlBuffer, refPages);
 
 			if (debug == 0) {
 				/**
@@ -256,11 +249,7 @@ public class PDFExtract {
 				/**
 				 * Call function to draw box to output
 				 */
-				try {
-					htmlBuffer = drawHtmlBox(htmlBuffer, refPages);
-				} catch (Exception e) {
-					throw new Exception("drawHtmlBox fail.: " + e.getMessage());
-				}
+				htmlBuffer = drawHtmlBox(htmlBuffer, refPages);
 			}
 
 			/**
@@ -277,6 +266,11 @@ public class PDFExtract {
 			}
 
 		} catch (Exception e) {
+
+			if (!common.IsEmpty(outputFile)) {
+				common.WriteFile(outputFile, common.getOutputError(e));
+			}
+
 			String message = e.getMessage();
 			if (writeLogFile) {
 				common.writeLog(logPath, inputFile, "Error: " + message, true);
@@ -328,22 +322,14 @@ public class PDFExtract {
 			/**
 			 * Call function to paint html box
 			 */
-			try {
-				htmlBuffer = convertPdfToHtml(inputStream);
-			} catch (Exception e) {
-				throw e;
-			}
+			htmlBuffer = convertPdfToHtml(inputStream);
 
 			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(
 					new ArrayList<PageObject>());
 			/**
 			 * Call function to paint html box
 			 */
-			try {
-				htmlBuffer = getHtmlBox(htmlBuffer, refPages);
-			} catch (Exception e) {
-				throw new Exception("getHtmlBox fail.: " + e.getMessage());
-			}
+			htmlBuffer = getHtmlBox(htmlBuffer, refPages);
 
 			if (debug == 0) {
 				/**
@@ -354,11 +340,7 @@ public class PDFExtract {
 				/**
 				 * Call function to draw box to html
 				 */
-				try {
-					htmlBuffer = drawHtmlBox(htmlBuffer, refPages);
-				} catch (Exception e) {
-					throw new Exception("drawHtmlBox fail.: " + e.getMessage());
-				}
+				htmlBuffer = drawHtmlBox(htmlBuffer, refPages);
 			}
 			/**
 			 * Write output stream
@@ -376,6 +358,10 @@ public class PDFExtract {
 
 			return outputStream;
 		} catch (Exception e) {
+
+			ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+			IOUtils.write(common.getOutputError(e), outputStream, "UTF-8");
+
 			String message = e.getMessage();
 			if (writeLogFile) {
 				common.writeLog(logPath, "Input Stream", "Error: " + message, true);
@@ -563,7 +549,7 @@ public class PDFExtract {
 
 			return output.getBuffer();
 		} catch (Exception e) {
-			throw new Exception("Convert pdf to html fail.: " + e.getMessage());
+			throw e;
 		} finally {
 			if (pdf != null) {
 				pdf.close();
@@ -593,7 +579,7 @@ public class PDFExtract {
 			parser.writeText(pdf, output);
 			return output.getBuffer();
 		} catch (Exception e) {
-			throw new Exception("Convert pdf to html fail.: " + e.getMessage());
+			throw e;
 		} finally {
 			if (pdf != null) {
 				pdf.close();
