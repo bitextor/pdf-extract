@@ -91,11 +91,12 @@ public class PDFExtract {
 	private ExecutorService executor;
 	private static float fontSizeScale = 0.5f;
 
-	private void initial(String logFilePath) throws Exception {
+	private void initial(String logFilePath, int verbose) throws Exception {
 		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory
 				.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
 		rootLogger.setLevel(Level.toLevel("off"));
 
+		common.setVerbose(verbose);
 		if (common.IsEmpty(logFilePath)) {
 			writeLogFile = false;
 		} else {
@@ -128,7 +129,7 @@ public class PDFExtract {
 	 * @throws Exception
 	 */
 	public PDFExtract() throws Exception {
-		initial("");
+		initial("", 0);
 	}
 
 	/**
@@ -138,7 +139,18 @@ public class PDFExtract {
 	 * @throws Exception
 	 */
 	public PDFExtract(String logFilePath) throws Exception {
-		initial(logFilePath);
+		initial(logFilePath, 0);
+	}
+
+	/**
+	 * Initializes a newly created PDFExtract object.
+	 * 
+	 * @param logFilePath The path to write the log file to.
+	 * @param verbose     Print the information to stdout (1=print, 0=silence)
+	 * @throws Exception
+	 */
+	public PDFExtract(String logFilePath, int verbose) throws Exception {
+		initial(logFilePath, verbose);
 	}
 
 	/**

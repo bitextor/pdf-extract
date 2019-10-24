@@ -31,6 +31,7 @@ import org.apache.commons.io.FilenameUtils;
  */
 public class Common {
 	Object _oLockerFile = new Object();
+	private int verbose = 0;
 
 	public static boolean isWindows() {
 		String os = System.getProperty("os.name").toLowerCase();
@@ -101,7 +102,6 @@ public class Common {
 
 	}
 
-	@SuppressWarnings("deprecation")
 	public List<String> readLines(String filePath) throws Exception {
 		return FileUtils.readLines(getFile(filePath));
 	}
@@ -322,6 +322,10 @@ public class Common {
 		System.out.print("-o <options>\t\t");
 		System.out.println(
 				"specifies control parameters.\n\t\t\t(Reserved for future use where more conifgurable parameters will be permitted.)");
+
+		System.out.print("-v\t\t\t");
+		System.out.println("enables Verbose mode.");
+
 		System.out.println("------------------------");
 	}
 
@@ -357,51 +361,53 @@ public class Common {
 	}
 
 	public void writeLog(String path, String inputfile, String message, boolean isError) {
-		synchronized (_oLockerFile) {
+		if (verbose == 1) {
+			synchronized (_oLockerFile) {
 
-			BufferedWriter oBuffer = null;
-			try {
+				BufferedWriter oBuffer = null;
+				try {
 
-				// Get current date
-				Calendar oCal = Calendar.getInstance();
-				//
-				SimpleDateFormat oDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
-				String logfilepath = path;
-				if (isWindows())
-					logfilepath = logfilepath.replace("/", "\\");
-				else
-					logfilepath = logfilepath.replace("\\", "/");
+					// Get current date
+					Calendar oCal = Calendar.getInstance();
+					//
+					SimpleDateFormat oDateTimeFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.S");
+					String logfilepath = path;
+					if (isWindows())
+						logfilepath = logfilepath.replace("/", "\\");
+					else
+						logfilepath = logfilepath.replace("\\", "/");
 
-				File file = new File(logfilepath);
-				if (file.getParent() != null) {
-					File dir = new File(file.getParent());
-					if (!dir.exists()) {
-						// create directory
-						dir.mkdirs();
+					File file = new File(logfilepath);
+					if (file.getParent() != null) {
+						File dir = new File(file.getParent());
+						if (!dir.exists()) {
+							// create directory
+							dir.mkdirs();
+						}
 					}
-				}
 
-				if (!IsEmpty(inputfile)) {
-					message = "File: " + inputfile + ", " + message;
-				}
+					if (!IsEmpty(inputfile)) {
+						message = "File: " + inputfile + ", " + message;
+					}
 
-				// Create or append file
-				FileWriter oFileWriter = new FileWriter(logfilepath, true);
-				oBuffer = new BufferedWriter(oFileWriter);
-				String text = oDateTimeFormat.format(oCal.getTime()) + "\t" + (isError ? "ERROR" : "INFO") + "\t"
-						+ message;
-				//
-				oBuffer.write(text);
-				oBuffer.newLine();
+					// Create or append file
+					FileWriter oFileWriter = new FileWriter(logfilepath, true);
+					oBuffer = new BufferedWriter(oFileWriter);
+					String text = oDateTimeFormat.format(oCal.getTime()) + "\t" + (isError ? "ERROR" : "INFO") + "\t"
+							+ message;
+					//
+					oBuffer.write(text);
+					oBuffer.newLine();
 
-			} catch (Exception ex) {
-				ex.printStackTrace();
-			} finally {
-				if (oBuffer != null) {
-					try {
-						oBuffer.close();
-					} catch (IOException ex) {
-						ex.printStackTrace();
+				} catch (Exception ex) {
+					ex.printStackTrace();
+				} finally {
+					if (oBuffer != null) {
+						try {
+							oBuffer.close();
+						} catch (IOException ex) {
+							ex.printStackTrace();
+						}
 					}
 				}
 			}
@@ -473,10 +479,16 @@ public class Common {
 	}
 
 	public void print(String file, String message) {
-		if (!IsEmpty(file)) {
-			message = "File: " + file + ", " + message;
+		if (verbose == 1) {
+			if (!IsEmpty(file)) {
+				message = "File: " + file + ", " + message;
+			}
+			System.out.println(message);
 		}
-		System.out.println(message);
+	}
+
+	public void setVerbose(int val) {
+		verbose = val;
 	}
 
 	public String getCustomScript(String rulePath, String customScript) throws Exception {
@@ -553,7 +565,7 @@ public class Common {
 
 		return rtext;
 	}
-	
+
 	public String getStackTrace(Exception exception) {
 		String text = "";
 		Writer writer = null;
@@ -575,7 +587,7 @@ public class Common {
 		}
 		return text;
 	}
-	
+
 	public String getOutputError(Exception e) {
 
 		StringBuffer html = new StringBuffer("");
@@ -593,7 +605,7 @@ public class Common {
 		html.append("</stacktrace>" + "\n");
 		html.append("</error>" + "\n");
 		html.append("</html>" + "\n");
-		
+
 		return html.toString();
 	}
 }

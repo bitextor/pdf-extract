@@ -7,18 +7,21 @@ import pdfextract.PDFExtract;
 public class Main {
 	public static void main(String[] args) {
 		try {
+
 			Common common = new Common();
 
 			if (args == null || args.length == 0 || args[0].equals("--help")) {
+
 				/**
 				 * Print out help
 				 */
 				common.printHelp();
 				System.exit(0);
+
 			}
 
 			String input = "", output = "", batchfile = "", options = "", logpath = "", rulepath = "", threadcount = "",
-					language = "", debug = "";
+					language = "", debug = "", verbose = "";
 			String key = "";
 
 			/**
@@ -30,6 +33,9 @@ public class Main {
 					key = parm.substring(1);
 					if (key.equals("D")) {
 						debug = "1";
+						key = "";
+					} else if (key.equals("v")) {
+						verbose = "1";
 						key = "";
 					}
 				} else {
@@ -59,10 +65,10 @@ public class Main {
 				 * Call function to extract single PDF file
 				 */
 				try {
-					PDFExtract oExtractor = new PDFExtract(logpath);
+					PDFExtract oExtractor = new PDFExtract(logpath, common.getInt(verbose));
 					oExtractor.Extract(input, output, rulepath, language, options, common.getInt(debug));
 				} catch (Exception e) {
-					common.print(input, "Extract fail: " + e.getMessage());
+					common.print("File: " + input + ", " + e.getMessage());
 				}
 
 			} else if (!common.IsEmpty(batchfile)) {
@@ -70,22 +76,16 @@ public class Main {
 				 * Call function to extract PDF with batch file
 				 */
 				try {
-					PDFExtract oExtractor = new PDFExtract(logpath);
+					PDFExtract oExtractor = new PDFExtract(logpath, common.getInt(verbose));
 					oExtractor.Extract(batchfile, rulepath, common.getInt(threadcount), language, options,
 							common.getInt(debug));
 				} catch (Exception e) {
-					common.print(batchfile, "Extract fail: " + e.getMessage());
+					common.print("File: " + batchfile + ", " + e.getMessage());
 				}
 
 			} else {
-				/**
-				 * Print out help
-				 */
-				common.printHelp();
-
-				System.out.println("Cannot start extract: Invalid parameters.");
+				common.print("Cannot start extract: Invalid parameters.");
 				System.exit(0);
-
 			}
 
 		} catch (Exception ex) {
@@ -103,4 +103,5 @@ public class Main {
 	public Main() {
 		super();
 	}
+
 }
