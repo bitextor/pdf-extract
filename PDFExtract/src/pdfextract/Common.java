@@ -17,21 +17,19 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.Compilable;
-import javax.script.CompiledScript;
-import javax.script.Invocable;
-import javax.script.ScriptEngine;
-import javax.script.ScriptEngineManager;
-
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
+
+import net.sf.json.JSONArray;
+import net.sf.json.JSONObject;
+import pdfextract.Config.NormalizeInfo;
 
 /**
  * @author MickeyVI
  */
 public class Common {
 	Object _oLockerFile = new Object();
-	private int verbose = 0;
+	private int verbose = 1;
 
 	public static boolean isWindows() {
 		String os = System.getProperty("os.name").toLowerCase();
@@ -102,6 +100,7 @@ public class Common {
 
 	}
 
+	@SuppressWarnings("deprecation")
 	public List<String> readLines(String filePath) throws Exception {
 		return FileUtils.readLines(getFile(filePath));
 	}
@@ -303,28 +302,16 @@ public class Common {
 		System.out.println(
 				"specifies the path to write the log file to.\n\t\t\tAs it is common for PDF files to have issues when processing\n\t\t\tsuch as being password protected or other forms of restricted permissions,\n\t\t\tthe log file can be written to a specifed location for additional processing.\n\t\t\tIf not specified, then the log file will write to stdout.");
 
-		System.out.print("-R <rule_path>\t\t");
-		System.out.println(
-				"specifies a custom set of rules to process joins between lines.\n\t\t\tAs this can vary considerably between languages, a custom set of rules can be implimented.\n\t\t\tSee Joining Lines for more details.\n\t\t\tIf no path is specified, then PDFExtract.js will be loaded from the same folder as the PDFExtract.jar execution.\n\t\t\tIf the PDFExtract.js file cannot be found, then processing will continue without analyzing the joins between lines.");
-
 		System.out.print("-T <number_threads>\t");
 		System.out.println(
 				"specifies the number of threads to run concurrently when processing PDF files.\n\t\t\tOne file can be processed per thread. If not specified, then the default valur of 1 thread is used.");
 
-		System.out.print("-LANG <lang>\t\t");
-		System.out.println(
-				"specifies the language of the file using ISO-639-1 codes when processing.\n\t\t\tIf not specified then the default language rules will be used.\n\t\t\tIf DETECT is specified instead of a language code, then each paragraph will be processed\n\t\t\tvia Language ID tools to determine the language of the paragraph.\n\t\t\tThe detected language will be used for sentence join analysis.\n\t\t\t(DETECT is not supported in this version)");
-
-		System.out.print("-D\t\t\t");
-		System.out.println(
-				"enables Debug/Display mode.\n\t\t\tThis changes the output to a more visual format that renders as HTML in a browser.");
-
-		System.out.print("-o <options>\t\t");
-		System.out.println(
-				"specifies control parameters.\n\t\t\t(Reserved for future use where more conifgurable parameters will be permitted.)");
-
 		System.out.print("-v\t\t\t");
 		System.out.println("enables Verbose mode.");
+
+		System.out.print("--keepbrtags\t\t");
+		System.out.println(
+				"by default <br /> is not included in the output. \n\t\t\tWhen this argument is specified, then the output will include the <br /> tag after each line.");
 
 		System.out.println("------------------------");
 	}
@@ -491,45 +478,10 @@ public class Common {
 		verbose = val;
 	}
 
-	public String getCustomScript(String rulePath, String customScript) throws Exception {
-		if (IsEmpty(customScript)) {
-			if (!IsEmpty(rulePath) && !IsExist(rulePath)) {
-				rulePath = "";
-			}
-			if (IsEmpty(rulePath) && IsExist("PDFExtract.js")) {
-				rulePath = "PDFExtract.js";
-			}
-
-			// read custom script
-			if (!IsEmpty(rulePath) && IsEmpty(customScript)) {
-				customScript = readFile(rulePath);
-			}
-		}
-
-		return customScript;
-	}
-
-	public Invocable getJSEngine(String customScript) {
-		try {
-			ScriptEngineManager manager = new ScriptEngineManager();
-			ScriptEngine engine = manager.getEngineByName("JavaScript");
-			//
-			Invocable jsEngine = (Invocable) engine;
-			Compilable compEngine = (Compilable) engine;
-			CompiledScript script = compEngine.compile(customScript);
-			script.eval();
-
-			return jsEngine;
-		} catch (Exception e) {
-			return null;
-		}
-
-	}
-
 	public HashMap<String, String> getSearchReplaceList() {
 		HashMap<String, String> list = new HashMap<String, String>();
 
-		String searchReplacePath = getJarPath() + "/search-replace.tab";
+		String searchReplacePath = combine(getJarPath(), "search-replace.tab");
 		if (IsExist(searchReplacePath)) {
 			//
 			try {
@@ -551,6 +503,10 @@ public class Common {
 		return list;
 	}
 
+	public String getConfigPath() {
+		return combine(getJarPath(), "PDFExtract.json");
+	}
+
 	public String replaceText(HashMap<String, String> hash, String text) {
 		String rtext = text;
 		if (hash != null && hash.size() > 0) {
@@ -559,7 +515,23 @@ public class Common {
 				String search = me.getKey().toString();
 				String replace = me.getValue().toString();
 
-				rtext = rtext.replaceAll(Pattern.quote(search), replace);
+				// rtext = rtext.replaceAll(Pattern.quote(search), replace);
+				rtext = rtext.replaceAll(search, replace);
+			}
+		}
+
+		return rtext;
+	}
+
+	public String replaceText(List<NormalizeInfo> normalizeList, String text) {
+		String rtext = text;
+		if (normalizeList != null && normalizeList.size() > 0) {
+			for (NormalizeInfo normalize : normalizeList) {
+				String search = normalize.search;
+				String replace = normalize.replace;
+
+				// rtext = rtext.replaceAll(Pattern.quote(search), replace);
+				rtext = rtext.replaceAll(search, replace);
 			}
 		}
 
@@ -608,4 +580,72 @@ public class Common {
 
 		return html.toString();
 	}
+
+	public JSONObject getJSONFormat(String sData) {
+		if (sData == null || sData.trim().length() == 0)
+			return null;
+		else
+			return JSONObject.fromObject(sData);
+	}
+
+	public String getJSONValue(JSONObject json, String name) {
+		if (json != null && json.has(name))
+			return json.getString(name);
+		else
+			return null;
+	}
+
+	public String getJSONValue(JSONObject json, String parentname, String name) {
+		if (json != null && json.has(parentname)) {
+			JSONObject jobj = json.getJSONObject(parentname);
+
+			if (jobj != null && jobj.has(name)) {
+				return jobj.getString(name);
+			} else {
+				return null;
+			}
+		} else
+			return null;
+	}
+
+	public JSONObject getJSONObject(JSONObject json, String name) {
+		if (json != null && json.has(name))
+			return json.getJSONObject(name);
+		else
+			return null;
+	}
+
+	public JSONObject getJSONObject(JSONObject json, String parentname, String name) {
+		if (json != null && json.has(parentname)) {
+			JSONObject jobj = json.getJSONObject(parentname);
+
+			if (jobj != null && jobj.has(name)) {
+				return jobj.getJSONObject(name);
+			} else {
+				return null;
+			}
+		} else
+			return null;
+	}
+
+	public JSONArray getJSONArray(JSONObject json, String name) {
+		if (json != null && json.has(name))
+			return json.getJSONArray(name);
+		else
+			return null;
+	}
+
+	public JSONArray getJSONArray(JSONObject json, String parentname, String name) {
+		if (json != null && json.has(parentname)) {
+			JSONObject jobj = json.getJSONObject(parentname);
+
+			if (jobj != null && jobj.has(name)) {
+				return jobj.getJSONArray(name);
+			} else {
+				return null;
+			}
+		} else
+			return null;
+	}
+
 }

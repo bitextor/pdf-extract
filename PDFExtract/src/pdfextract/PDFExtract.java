@@ -1,44 +1,34 @@
 package pdfextract;
 
-import ch.qos.logback.classic.Level;
+import pdfextract.Config.EOFInfo;
+import pdfextract.Config.JoinWordInfo;
+import pdfextract.Config.LangInfo;
+import pdfextract.Config.NormalizeInfo;
+import pdfextract.DetectLanguage.LanguageResult;
 import pdfextract.HTMLObject.*;
-
+import pdfextract.SentenceJoin.WorkerStatus;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Hashtable;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.script.Invocable;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.pdfbox.io.MemoryUsageSetting;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.fit.pdfdom.PDFDomTree;
-import org.fit.pdfdom.PDFDomTreeConfig;
-import org.fit.pdfdom.resource.HtmlResourceHandler;
-import org.fit.pdfdom.resource.IgnoreResourceHandler;
-import org.slf4j.LoggerFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Node;
-import org.xml.sax.SAXException;
+import com.google.common.collect.Lists;
 
 /**
  * @author MickeyVI
@@ -50,52 +40,38 @@ public class PDFExtract {
 	private final boolean runnable = true;
 
 	private String logPath = "";
-	private String customScript = "";
 	private boolean writeLogFile = true;
-	private boolean loadEngineFail = false;
-	private Object lockerExtract = new Object();
-	private Invocable scriptEngine = null;
-	private List<String> failFunctionList = new ArrayList<String>();
-	private Pattern patternP = Pattern.compile("<div class=\"p\"");
-	private Pattern patternPage = Pattern.compile("<div class=\"page\"");
-	private Pattern patternBlankSpace = Pattern.compile("<div class=\"r\"");
-	private Pattern patternImage = Pattern.compile("<img.*");
-	private Pattern patternPageStartTag = Pattern.compile("<div class=\"page\"[^>]*>");
 
-	private static final String REGEX_TOP = ".*top:([\\-\\+0-9]+.[0-9]+).*";
-	private static final String REGEX_LEFT = ".*left:([\\-\\+0-9]+.[0-9]+).*";
-	private static final String REGEX_HEIGHT = ".*height:([\\-\\+0-9]+.[0-9]+).*";
-	private static final String REGEX_WIDTH = ".*width:([\\-\\+0-9]+.[0-9]+).*";
-	private static final String REGEX_FONTSIZE = ".*font-size:([\\-\\+0-9]+.[0-9]+).*";
-	private static final String REGEX_FONTFAMILY = ".*font-family:([a-zA-Z\\s\\-]+).*";
-	private static final String REGEX_FONTWEIGHT = ".*font-weight:([a-zA-Z0-9\\s\\-]+).*";
-	private static final String REGEX_FONTSTYLE = ".*font-style:([a-zA-Z\\s\\-]+).*";
-	private static final String REGEX_WORD = ".*>(.*?)<.*";
-	private static final String REGEX_COLOR = "(.*color:)(#[a-z]+)(;.*)$";
-	private static final String REGEX_WORDSPACING = ".*word-spacing:([\\-\\+0-9]+.[0-9]+).*";
+	private Pattern patternPageOpen = Pattern.compile("<page ");
+	private Pattern patternStyleOpen = Pattern.compile("<fontspec ");
+	private Pattern patternText = Pattern.compile("<text ");
+	private Pattern patternPageNo = Pattern.compile(".*number=\"([0-9\\.]+)\".*");
+	private Pattern patternWidth = Pattern.compile(".*width=\"([0-9\\.]+)\".*");
+	private Pattern patternHeight = Pattern.compile(".*height=\"([0-9\\.]+)\".*");
+	private Pattern patternLeft = Pattern.compile(".*left=\"([0-9\\.]+)\".*");
+	private Pattern patternTop = Pattern.compile(".*top=\"([0-9\\.]+)\".*");
+	private Pattern patternFont = Pattern.compile(".*font=\"([0-9\\.]+)\".*");
+	private Pattern patternId = Pattern.compile(".*id=\"([0-9]+)\".*");
+	private Pattern patternSize = Pattern.compile(".*size=\"([0-9]+)\".*");
+	private Pattern patternFamily = Pattern.compile(".*family=\"([0-9a-zA-Z\\s\\-\\_\\+]+)\".*");
+	private Pattern patternColor = Pattern.compile(".*color=\"(#[a-z0-9]+)\".*");
+	private Pattern patternBold = Pattern.compile("<b>([^<]*)<\\/b>");
+	private Pattern patternLink = Pattern.compile("<a ?[^>]*>([^<]*)<\\/a>");
+	private Pattern patternWord = Pattern.compile("<text [^>]*>(.*?)<\\/text>");
 
-	private Pattern patternTop = Pattern.compile(REGEX_TOP);
-	private Pattern patternLeft = Pattern.compile(REGEX_LEFT);
-	private Pattern patternHeight = Pattern.compile(REGEX_HEIGHT);
-	private Pattern patternWidth = Pattern.compile(REGEX_WIDTH);
-	private Pattern patternFontSize = Pattern.compile(REGEX_FONTSIZE);
-	private Pattern patternFontFamily = Pattern.compile(REGEX_FONTFAMILY);
-	private Pattern patternFontWeight = Pattern.compile(REGEX_FONTWEIGHT);
-	private Pattern patternFontStyle = Pattern.compile(REGEX_FONTSTYLE);
-	private Pattern patternWord = Pattern.compile(REGEX_WORD);
-	private Pattern patternColor = Pattern.compile(REGEX_COLOR);
-	private Pattern patternWordSpacing = Pattern.compile(REGEX_WORDSPACING);
-
-	private HashMap<String, String> searchReplaceList = new HashMap<String, String>();
 	private Common common = new Common();
 	private ExecutorService executor;
-	private static float fontSizeScale = 0.5f;
+
+	private PDFToHtml pdf = new PDFToHtml();
+	private String paraMarker = "LSMARKERLS:PARA";
+	private String defaultLang = "en";
+	private int maxWordsJoin = 5;
+
+	private Object _objectWorker = new Object();
+	private HashMap<String, SentenceJoin> _hashSentenceJoin = new HashMap<>();
+	private Config config = null;
 
 	private void initial(String logFilePath, int verbose) throws Exception {
-		ch.qos.logback.classic.Logger rootLogger = (ch.qos.logback.classic.Logger) LoggerFactory
-				.getLogger(ch.qos.logback.classic.Logger.ROOT_LOGGER_NAME);
-		rootLogger.setLevel(Level.toLevel("off"));
-
 		common.setVerbose(verbose);
 		if (common.IsEmpty(logFilePath)) {
 			writeLogFile = false;
@@ -121,6 +97,11 @@ public class PDFExtract {
 				common.print("Log File: " + logPath);
 		}
 
+		try {
+			config = new Config(common.getConfigPath());
+		} catch (Exception e) {
+			throw new Exception("initial failed. " + e.getMessage());
+		}
 	}
 
 	/**
@@ -159,22 +140,13 @@ public class PDFExtract {
 	 *
 	 * @param inputFile  The path to the source PDF file process for extraction
 	 * @param outputFile The path to the output HTML file after extraction
-	 * @param rulePath   The path of a custom set of rules to process joins between
-	 *                   lines. If no path is specified, then PDFExtract.js will be
-	 *                   loaded from the same folder as the PDFExtract.jar
-	 *                   execution. If the PDFExtract.js file cannot be found, then
-	 *                   processing will continue without analyzing the joins
-	 *                   between lines.
-	 * @param language   The language of the file using ISO-639-1 codes when
-	 *                   processing. If not specified then the default language
-	 *                   rules will be used.
-	 * @param options    The control parameters
-	 * @param debug      Enable Debug/Display mode. This changes the output to a
-	 *                   more visual format that renders as HTML in a browser.
+	 * @param keepBrTags By default <br />
+	 *                   is not included in the output. When this argument is
+	 *                   specified, then the output will include the <br />
+	 *                   tag after each line.
 	 *
 	 */
-	public void Extract(String inputFile, String outputFile, String rulePath, String language, String options,
-			int debug) throws Exception {
+	public void Extract(String inputFile, String outputFile, int keepBrTags) throws Exception {
 
 		String outputPath = "";
 		try {
@@ -222,47 +194,39 @@ public class PDFExtract {
 				throw new Exception("Input file extension is not pdf.");
 			}
 
-			/**
-			 * Read rule script and load into object
-			 */
-			synchronized (lockerExtract) {
-				customScript = common.getCustomScript(rulePath, customScript);
-			}
-			if (common.IsNull(scriptEngine) && !common.IsEmpty(customScript) && !loadEngineFail) {
-				synchronized (lockerExtract) {
-					if (scriptEngine == null && !loadEngineFail) {
-						scriptEngine = common.getJSEngine(customScript);
-						if (scriptEngine == null)
-							loadEngineFail = true;
-					}
-				}
-			}
-
 			StringBuffer htmlBuffer = new StringBuffer("");
 			/**
 			 * Call function to convert PDF to HTML
 			 */
 			htmlBuffer = convertPdfToHtml(inputFile);
 
-			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(
-					new ArrayList<PageObject>());
+			AtomicReference<DocumentObject> refDoc = new AtomicReference<DocumentObject>(new DocumentObject());
+			getHtmlObject(htmlBuffer, refDoc);
+
 			/**
-			 * Call function to paint html box
+			 * Call function to repair & adjustment
 			 */
-			htmlBuffer = getHtmlBox(htmlBuffer, refPages);
+			repairAndAdjustment(refDoc);
 
-			if (debug == 0) {
-				/**
-				 * Call function to normalize html
-				 */
-				htmlBuffer = Normalize(htmlBuffer, refPages, language);
-			} else {
+			/**
+			 * Call function to do language id
+			 */
+			languageId(refDoc);
 
-				/**
-				 * Call function to draw box to output
-				 */
-				htmlBuffer = drawHtmlBox(htmlBuffer, refPages);
-			}
+			/**
+			 * Call function to join sentence
+			 */
+			sentenceJoin(refDoc);
+
+			/**
+			 * Call function to final repair
+			 */
+			finalRepair(refDoc);
+
+			/**
+			 * Call function to generate html output
+			 */
+			htmlBuffer = generateOutput(refDoc, keepBrTags);
 
 			/**
 			 * Write to output file.
@@ -302,17 +266,14 @@ public class PDFExtract {
 	 * format that is optimized for easy alignment across multiple language sources.
 	 *
 	 * @param inputStream Stream data as ByteArray for extraction
-	 * @param language    The language of the file using ISO-639-1 codes when
-	 *                    processing. If not specified then the default language
-	 *                    rules will be used.
-	 * @param options     The control parameters
-	 * @param debug       Enable Debug/Display mode. This changes the output to a
-	 *                    more visual format that renders as HTML in a browser.
+	 * @param keepBrTags  By default <br />
+	 *                    is not included in the output. When this argument is
+	 *                    specified, then the output will include the <br />
+	 *                    tag after each line.
 	 *
 	 * @return ByteArrayOutputStream Stream Out
 	 */
-	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, String language, String options, int debug)
-			throws Exception {
+	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, int keepBrTags) throws Exception {
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -336,24 +297,29 @@ public class PDFExtract {
 			 */
 			htmlBuffer = convertPdfToHtml(inputStream);
 
-			AtomicReference<List<PageObject>> refPages = new AtomicReference<List<PageObject>>(
-					new ArrayList<PageObject>());
-			/**
-			 * Call function to paint html box
-			 */
-			htmlBuffer = getHtmlBox(htmlBuffer, refPages);
+			AtomicReference<DocumentObject> refDoc = new AtomicReference<DocumentObject>(new DocumentObject());
+			getHtmlObject(htmlBuffer, refDoc);
 
-			if (debug == 0) {
-				/**
-				 * Call function to normalize html
-				 */
-				htmlBuffer = Normalize(htmlBuffer, refPages, language);
-			} else {
-				/**
-				 * Call function to draw box to html
-				 */
-				htmlBuffer = drawHtmlBox(htmlBuffer, refPages);
-			}
+			/**
+			 * Call function to repair & adjustment
+			 */
+			repairAndAdjustment(refDoc);
+
+			/**
+			 * Call function to do language id
+			 */
+			languageId(refDoc);
+
+			/**
+			 * Call function to join sentence
+			 */
+			sentenceJoin(refDoc);
+
+			/**
+			 * Call function to generate html output
+			 */
+			htmlBuffer = generateOutput(refDoc, keepBrTags);
+
 			/**
 			 * Write output stream
 			 */
@@ -378,8 +344,7 @@ public class PDFExtract {
 			if (writeLogFile) {
 				common.writeLog(logPath, "Input Stream", "Error: " + message, true);
 			} else {
-				if (!runnable)
-					common.print("Input Stream", "Error: " + message);
+				common.print("Input Stream", "Error: " + message);
 			}
 
 			throw e;
@@ -395,25 +360,16 @@ public class PDFExtract {
 	 *                    The input file and output file are specified on the same
 	 *                    line delimited by a tab. Each line is delimited by a new
 	 *                    line character.
-	 * @param rulePath    The path of a custom set of rules to process joins between
-	 *                    lines. If no path is specified, then PDFExtract.js will be
-	 *                    loaded from the same folder as the PDFExtract.jar
-	 *                    execution. If the PDFExtract.js file cannot be found, then
-	 *                    processing will continue without analyzing the joins
-	 *                    between lines.
 	 * @param threadCount The number of threads to run concurrently when processing
 	 *                    PDF files. One file can be processed per thread. If not
 	 *                    specified, then the default valur of 1 thread is used.
-	 * @param language    The language of the file using ISO-639-1 codes when
-	 *                    processing. If not specified then the default language
-	 *                    rules will be used.
-	 * @param options     The control parameters
-	 * @param debug       Enable Debug/Display mode. This changes the output to a
-	 *                    more visual format that renders as HTML in a browser.
+	 * @param keepBrTags  By default <br />
+	 *                    is not included in the output. When this argument is
+	 *                    specified, then the output will include the <br />
+	 *                    tag after each line.
 	 *
 	 */
-	public void Extract(String batchFile, String rulePath, int threadCount, String language, String options, int debug)
-			throws Exception {
+	public void Extract(String batchFile, int threadCount, int keepBrTags) throws Exception {
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -428,18 +384,6 @@ public class PDFExtract {
 			 */
 			if (!common.IsExist(batchFile)) {
 				throw new Exception("Input batch file does not exist.");
-			}
-
-			/**
-			 * Read rule script and load into object
-			 */
-			if (common.IsEmpty(customScript)) {
-				customScript = common.getCustomScript(rulePath, customScript);
-			}
-			if (!common.IsEmpty(customScript)) {
-				scriptEngine = common.getJSEngine(customScript);
-				if (scriptEngine == null)
-					loadEngineFail = true;
 			}
 
 			if (threadCount == 0)
@@ -464,7 +408,7 @@ public class PDFExtract {
 					continue;
 				}
 
-				AddThreadExtract(ind, line, rulePath, language, options, debug);
+				AddThreadExtract(ind, line, keepBrTags);
 				ind++;
 			}
 			executor.shutdown();
@@ -487,13 +431,14 @@ public class PDFExtract {
 			} else {
 				common.print("Finish extract batch file: " + batchFile);
 			}
+			shutdownProcess();
 		}
 	}
 
 	/**
 	 * Add new thread pdf extract
 	 */
-	private void AddThreadExtract(int index, String line, String rulePath, String language, String options, int debug) {
+	private void AddThreadExtract(int index, String line, int keepBrTags) {
 		try {
 			executor.execute(new Runnable() {
 				@Override
@@ -515,7 +460,7 @@ public class PDFExtract {
 						/**
 						 * Call function to extract
 						 */
-						Extract(inputFile, outputFile, rulePath, language, options, debug);
+						Extract(inputFile, outputFile, keepBrTags);
 
 					} catch (Exception e) {
 						String message = e.getMessage();
@@ -546,72 +491,23 @@ public class PDFExtract {
 	 * Convert PDF to HTML file
 	 */
 	private StringBuffer convertPdfToHtml(String inputFile) throws Exception {
-		PDDocument pdf = null;
-		StringWriter output = null;
-		try {
-			// loads the PDF file, parse it and gets html file
-			pdf = PDDocument.load(new java.io.File(inputFile));
-			HtmlResourceHandler handler = new IgnoreResourceHandler();
-			PDFDomTreeConfig config = PDFDomTreeConfig.createDefaultConfig();
-			config.setImageHandler(handler);
-			PDFDomTree parser = new PDFDomTree(config);
-			parser.createDOM(pdf);
-			output = new StringWriter();
-			parser.writeText(pdf, output);
-
-			return output.getBuffer();
-		} catch (Exception e) {
-			throw e;
-		} finally {
-			if (pdf != null) {
-				pdf.close();
-				pdf = null;
-			}
-			if (output != null) {
-				output.close();
-				output = null;
-			}
-		}
+		return pdf.extract(inputFile);
 	}
 
 	/**
 	 * Convert PDF to HTML file
 	 */
-	private StringBuffer convertPdfToHtml(InputStream inputStream) throws Exception {
-		MemoryUsageSetting setupMainMemoryOnly = MemoryUsageSetting.setupMainMemoryOnly();
-		PDDocument pdf = null;
-		StringWriter output = null;
-		try {
-			pdf = PDDocument.load(inputStream, setupMainMemoryOnly);
-			HtmlResourceHandler handler = new IgnoreResourceHandler();
-			PDFDomTreeConfig config = PDFDomTreeConfig.createDefaultConfig();
-			config.setImageHandler(handler);
-			PDFDomTree parser = new PDFDomTree(config);
-			output = new StringWriter();
-			parser.writeText(pdf, output);
-			return output.getBuffer();
-		} catch (Exception e) {
-			throw e;
-		} finally {
-			if (pdf != null) {
-				pdf.close();
-				pdf = null;
-			}
-			if (output != null) {
-				output.close();
-				output = null;
-			}
-		}
+	private StringBuffer convertPdfToHtml(ByteArrayInputStream inputStream) throws Exception {
+		return pdf.extract(inputStream);
 	}
 
 	/**
-	 * Get HTML Box
+	 * Get HTML Object Parse data to HTML Object
 	 */
-	private StringBuffer getHtmlBox(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages)
-			throws Exception {
+	private void getHtmlObject(StringBuffer htmlBuffer, AtomicReference<DocumentObject> refDoc) throws Exception {
 		BufferedReader b_in = null;
-		StringBuffer htmlBufferOut = new StringBuffer();
-		List<PageObject> pages = refPages.get();
+		DocumentObject doc = refDoc.get();
+
 		try {
 
 			InputStreamReader i_in = new InputStreamReader(new ByteArrayInputStream(htmlBuffer.toString().getBytes()),
@@ -620,108 +516,636 @@ public class PDFExtract {
 			String line = "";
 			int currentPage = 0;
 			PageObject page = new PageObject();
+			HashMap<Float, Integer> mapPageWidth = new HashMap<Float, Integer>();
+			HashMap<Float, Integer> mapPageHeight = new HashMap<Float, Integer>();
+			HashMap<String, StyleObject> mapStyle = new HashMap<String, StyleObject>();
 
 			while ((line = b_in.readLine()) != null) {
-				Matcher m = this.patternP.matcher(line);
-				Matcher m1 = this.patternPage.matcher(line);
-				Matcher m2 = this.patternBlankSpace.matcher(line);
-				Matcher m3 = this.patternImage.matcher(line);
 
-				if (m2.find() || m3.find()) {
-					line = line.replaceAll(".*src.*>", "");
-					line = line.replaceAll("<div class=\"r\" style.*", "");
+				Matcher mStyleOpen = this.patternStyleOpen.matcher(line);
+				Matcher patternText = this.patternText.matcher(line);
+				Matcher mPageOpen = this.patternPageOpen.matcher(line);
 
-					if (!common.IsEmpty(line.trim())) {
-						htmlBufferOut.append(line + "\n");
-					}
-				} else if (m.find()) {
-					htmlBufferOut.append(line + "\n");
+				if (patternText.find()) {
 
-					TextObject text = getTextObject(line);
+					/**
+					 * New text found, call function to get a text object and add into the page
+					 */
+					TextObject text = getTextObject(line, mapStyle);
 					if (!checkLineAdd(page.width, page.height, text)) {
 						continue;
 					}
-
 					page.texts.add(text);
-				} else if (m1.find()) {
-					if (line.indexOf("/>") > -1) {
-						// fix for blank page
-						line = line.substring(0, line.lastIndexOf("/>")) + "></div>";
-					}
-					htmlBufferOut.append(line + "\n");
+
+				} else if (mPageOpen.find()) {
 
 					if (currentPage > 0) {
-						pages.add(page);
+						doc.pages.add(page);
+						Thread.sleep(50);
 					}
-
 					currentPage++;
 					page = new PageObject();
-					page.pageno = currentPage;
+
+					/**
+					 * New page found, extract page number, width and height of the page
+					 */
+					page.pageno = common.getInt(patternPageNo.matcher(line).replaceAll("$1"));
 					page.height = common.getFloat(patternHeight.matcher(line).replaceAll("$1"));
 					page.width = common.getFloat(patternWidth.matcher(line).replaceAll("$1"));
-				} else {
-					if (line.indexOf("</style>") > -1) {
-						line = line.replace("</style>",
-								"\n.p:nth-child(even){background:rgba(255, 255, 0, 0.5);} .p:nth-child(odd){background:rgba(200, 255, 100, 0.5);}\n</style>");
-					}
-					htmlBufferOut.append(line + "\n");
+
+					mapPageWidth.put(page.width, common.getInt(mapPageWidth.get(page.width)) + 1);
+					mapPageHeight.put(page.height, common.getInt(mapPageHeight.get(page.height)) + 1);
+
+				} else if (mStyleOpen.find()) {
+
+					/**
+					 * Collect new style into the list
+					 */
+					StyleObject style = new StyleObject();
+					style.id = common.getStr(patternId.matcher(line).replaceAll("$1"));
+					style.size = common.getInt(patternSize.matcher(line).replaceAll("$1"));
+					style.family = common.getStr(patternFamily.matcher(line).replaceAll("$1"));
+					style.color = common.getStr(patternColor.matcher(line).replaceAll("$1"));
+					mapStyle.put(style.id, style);
+
 				}
 			}
 
-			//
-			pages.add(page);
-			//
+			doc.pages.add(page);
+
+			/**
+			 * Get most width and height of the document
+			 */
+			doc.width = getMaxCount(mapPageWidth);
+			doc.height = getMaxCount(mapPageHeight);
 
 		} finally {
 			if (b_in != null) {
 				b_in.close();
 				b_in = null;
 			}
-			refPages.set(pages);
+			refDoc.set(doc);
 		}
 
-		htmlBuffer = htmlBufferOut;
-		getBox(refPages);
-
-		return htmlBuffer;
 	}
 
-	private TextObject getTextObject(String line) {
+	/**
+	 * Repair and adjust text with the common rules
+	 */
+	private void repairAndAdjustment(AtomicReference<DocumentObject> refDoc) throws Exception {
+
+		DocumentObject doc = refDoc.get();
+		try {
+
+			LangInfo commonInfo = null;
+			if (config != null) {
+				commonInfo = config.get("common");
+			}
+
+			/**
+			 * Get height + normalize text
+			 */
+			for (PageObject page : doc.pages) {
+
+				HashMap<Float, Integer> mapHeight = new HashMap<Float, Integer>();
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (text.height > 0) {
+						int count = 0;
+						if (mapHeight.containsKey(text.height)) {
+							count = mapHeight.get(text.height);
+						}
+						mapHeight.put(text.height, count + 1);
+					}
+					if (commonInfo != null) {
+						text.text = common.replaceText(commonInfo.normalize, text.text).trim();
+					}
+				}
+				if (mapHeight.size() > 0) {
+					page.mostHeight = getMaxCount(mapHeight);
+				}
+
+			}
+
+			/**
+			 * Check top to merge line
+			 */
+			for (PageObject page : doc.pages) {
+
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (common.IsEmpty(text.text)) {
+						text.deleted = true;
+						continue;
+					}
+
+					StringBuffer sb = new StringBuffer(text.text.trim());
+					boolean hasUpdated = false;
+					if (i + 1 < len) {
+						for (int j = i + 1; j < len; j++) {
+							TextObject nextText = page.texts.get(j);
+
+							if (common.IsEmpty(nextText.text)) {
+								nextText.deleted = true;
+								continue;
+							}
+
+							if (!isMergeTop(text, nextText)) {
+								i = j - 1;
+								break;
+							} else {
+
+								// merge
+								sb.append(" " + nextText.text.trim());
+								if (!nextText.islink)
+									text.color = nextText.color;
+								if (nextText.top < text.top)
+									text.top = nextText.top;
+								if (nextText.bottom > text.bottom)
+									text.bottom = nextText.bottom;
+								text.right = nextText.right;
+								text.width = text.right - text.left;
+								text.height = text.bottom - text.top;
+								nextText.deleted = true;
+								hasUpdated = true;
+
+							}
+						}
+
+						if (hasUpdated) {
+							text.text = sb.toString();
+						}
+					}
+
+				}
+			}
+
+			/**
+			 * Adding paragraph separator
+			 */
+			for (PageObject page : doc.pages) {
+				List<TextObject> newTexts = new ArrayList<TextObject>();
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (text.deleted)
+						continue;
+					if (common.IsEmpty(text.text))
+						continue;
+
+					newTexts.add(text);
+
+					if (i + 1 < len) {
+						for (int j = i + 1; j < len; j++) {
+							TextObject nextText = page.texts.get(j);
+
+							if (nextText.deleted)
+								continue;
+							if (common.IsEmpty(nextText.text))
+								continue;
+
+							if (text.text.trim().endsWith(",") && isClassChanged(text, nextText)) {
+								newTexts.add(getNewText(paraMarker));
+							} else if (isTooFar(text, nextText) || isFontChanged(text, nextText)) {
+								newTexts.add(getNewText(paraMarker));
+							}
+							break;
+						}
+					} else {
+						newTexts.add(getNewText(paraMarker));
+					}
+
+				}
+
+				page.texts.clear();
+				page.texts.addAll(newTexts);
+
+			}
+
+			/**
+			 * Merge sentence
+			 */
+			List<JoinWordInfo> joinList = new ArrayList<>();
+			List<EOFInfo> eofList = new ArrayList<>();
+
+			if (config != null && config.get("common") != null) {
+				joinList = config.get("common").joinWords;
+				eofList = config.get("common").absoluteEOF;
+			}
+
+			for (PageObject page : doc.pages) {
+
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (page.pageno == 3) {
+						String s = "";
+						System.out.print(s);
+					}
+
+					if (text.deleted)
+						continue;
+					if (text.text.equals(paraMarker))
+						continue;
+
+					boolean isJoin = false;
+					if (i + 1 < len) {
+						for (int j = i + 1; j < len; j++) {
+							TextObject nextText = page.texts.get(j);
+
+							if (nextText.deleted)
+								continue;
+							if (nextText.text.equals(paraMarker))
+								break;
+							if (!text.lang.equals(nextText.lang))
+								break;
+
+							boolean isEOF = false;
+							// absolute_eof
+							for (EOFInfo rule : eofList) {
+								if (!common.IsEmpty(rule.front) && !common.IsEmpty(rule.back)) {
+									if (text.text.matches(rule.front) && nextText.text.matches(rule.back))
+										isEOF = true;
+								} else if (!common.IsEmpty(rule.front)) {
+									if (text.text.matches(rule.front))
+										isEOF = true;
+								} else if (!common.IsEmpty(rule.back)) {
+									if (nextText.text.matches(rule.back))
+										isEOF = true;
+								}
+
+								if (isEOF) {
+									isJoin = false;
+									break;
+								}
+							}
+
+							if (!isEOF) {
+								// join_words
+								for (JoinWordInfo rule : joinList) {
+									if (!common.IsEmpty(rule.front) && !common.IsEmpty(rule.back)) {
+										if (text.text.matches(rule.front) && nextText.text.matches(rule.back))
+											isJoin = true;
+									} else if (!common.IsEmpty(rule.front)) {
+										if (text.text.matches(rule.front))
+											isJoin = true;
+									} else if (!common.IsEmpty(rule.back)) {
+										if (nextText.text.matches(rule.back))
+											isJoin = true;
+									}
+
+									if (isJoin) {
+										text.text += rule.joinText + nextText.text;
+										nextText.deleted = true;
+										break;
+									}
+								}
+							}
+
+							if (!isJoin) {
+								i = j - 1;
+								break;
+							}
+						}
+					}
+
+				}
+			}
+
+		} finally {
+			refDoc.set(doc);
+		}
+	}
+
+	/**
+	 * Detect language + normalize text with language rules
+	 */
+	private void languageId(AtomicReference<DocumentObject> refDoc) {
+
+		DocumentObject doc = refDoc.get();
+
+		try {
+
+			DetectLanguage detectLang = null;
+			try {
+				detectLang = new DetectLanguage();
+			} catch (Exception e) {
+			}
+
+			if (detectLang == null)
+				return;
+
+			List<NormalizeInfo> normalizeList = new ArrayList<>();
+			LangInfo langInfo = new LangInfo();
+
+			// language id
+			HashMap<String, Integer> mapLang = new HashMap<>();
+
+			List<LanguageResult> results = null;
+			for (PageObject page : doc.pages) {
+
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (text.deleted)
+						continue;
+					if (text.text.equals(paraMarker))
+						continue;
+
+					if (!canDetectLang(text)) {
+						continue;
+					}
+
+					/**
+					 * Call detect language
+					 */
+					results = detectLang.find(text.text);
+					if (results != null && results.size() > 0) {
+						LanguageResult lang = results.get(0);
+						text.lang = lang.language;
+
+						if (config != null) {
+							langInfo = config.get(text.lang);
+							if (langInfo != null) {
+								normalizeList = langInfo.normalize;
+
+								/**
+								 * Normalize text by language
+								 */
+								common.replaceText(normalizeList, text.text);
+							}
+						}
+
+						int count = 0;
+						if (mapLang.containsKey(lang.language)) {
+							count = mapLang.get(lang.language);
+						}
+						mapLang.put(lang.language, count + 1);
+					}
+				}
+			}
+
+			/**
+			 * Get most language and document language list
+			 */
+			doc.language = getMaxLangCount(mapLang);
+			doc.langList = getLangList(mapLang);
+
+		} catch (Exception e) {
+
+		} finally {
+			refDoc.set(doc);
+		}
+	}
+
+	/**
+	 * Sentence Join
+	 */
+	private void sentenceJoin(AtomicReference<DocumentObject> refDoc) {
+
+		DocumentObject doc = refDoc.get();
+
+		try {
+
+			for (PageObject page : doc.pages) {
+
+				String currentLang = "";
+				List<TextObject> texts = new ArrayList<>();
+				List<TextObject> newTexts = new ArrayList<>();
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (text.deleted)
+						continue;
+
+					if (common.IsEmpty(text.lang))
+						text.lang = doc.language;
+
+					if (i == 0 || common.IsEmpty(currentLang)) {
+
+						// start first chunk
+						if (!common.IsEmpty(text.lang)) {
+							currentLang = text.lang;
+						} else {
+							currentLang = doc.language;
+						}
+						texts.add(text);
+
+					} else if (text.text.equals(paraMarker) || (!common.IsEmpty(currentLang)
+							&& !common.IsEmpty(text.lang) && !text.lang.equals(currentLang))) {
+
+						// do sentence join
+						if (text.text.equals(paraMarker))
+							newTexts.add(text);
+
+						if (!text.lang.equals(currentLang)) {
+							newTexts.add(getNewText(paraMarker));
+						}
+
+						newTexts.addAll(sentenceJoin(texts, currentLang));
+
+						// start new chunk
+						texts.clear();
+
+						if (!text.text.equals(paraMarker)) {
+							texts.add(text);
+							if (!common.IsEmpty(text.lang)) {
+								currentLang = text.lang;
+							} else {
+								currentLang = doc.language;
+							}
+						} else {
+							currentLang = "";
+						}
+					} else {
+						texts.add(text);
+					}
+				}
+
+				page.texts.clear();
+				page.texts.addAll(newTexts);
+			}
+
+		} finally {
+			refDoc.set(doc);
+		}
+	}
+
+	/**
+	 * Final repair with the configuration rules
+	 */
+	private void finalRepair(AtomicReference<DocumentObject> refDoc) {
+
+		DocumentObject doc = refDoc.get();
+
+		try {
+
+			List<NormalizeInfo> repairList = new ArrayList<>();
+			if (config.get("common") != null) {
+				repairList = config.get("common").repair;
+			}
+
+			LangInfo langInfo = new LangInfo();
+
+			for (PageObject page : doc.pages) {
+
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+
+					if (text.deleted)
+						continue;
+					if (text.text.equals(paraMarker))
+						continue;
+
+					text.text = common.replaceText(repairList, text.text);
+
+					langInfo = config.get(text.lang);
+					if (langInfo != null) {
+						List<NormalizeInfo> langRepairList = langInfo.repair;
+						text.text = common.replaceText(langRepairList, text.text);
+					}
+
+				}
+			}
+
+		} finally {
+			refDoc.set(doc);
+		}
+	}
+
+	/**
+	 * Generate final output with html format
+	 */
+	private StringBuffer generateOutput(AtomicReference<DocumentObject> refDoc, int keepBrTags) {
+
+		DocumentObject doc = refDoc.get();
+		StringBuffer sbOut = new StringBuffer();
+
+		// html
+		sbOut.append("<html>\n");
+
+		// header
+		sbOut.append("<head>\n");
+		sbOut.append("<defaultLang abbr=\"" + doc.language + "\" />\n");
+		sbOut.append("<languages>\n");
+		for (LangObject lang : doc.langList) {
+			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\" />\n");
+		}
+		sbOut.append("</languages>\n");
+		sbOut.append("</head>\n");
+
+		// body
+		sbOut.append("<body>\n");
+		for (PageObject page : doc.pages) {
+
+			// page
+			sbOut.append("<div id=\"page" + page.pageno + "\" class=\"page\">\n");
+
+			int ipara = 1;
+			boolean bpara = false;
+
+			if (page.texts.size() > 0) {
+
+				for (int i = 0, len = page.texts.size(); i < len; i++) {
+					TextObject text = page.texts.get(i);
+					if (text.deleted)
+						continue;
+					if (common.IsEmpty(text.text))
+						continue;
+
+					if (text.text.equals(paraMarker)) {
+						if (bpara) {
+							sbOut.append("</p>\n");
+							bpara = false;
+						}
+
+						if (i + 1 < len) {
+
+							if (page.texts.get(i + 1).text.equals(paraMarker))
+								continue;
+							if (common.IsEmpty(page.texts.get(i + 1).text))
+								continue;
+
+							String lang = page.texts.get(i + 1).lang;
+							String font = page.texts.get(i + 1).fontfamily;
+
+							// paragraph
+							sbOut.append("<p id=\"page" + page.pageno + "p" + ipara++ + "\" lang=\"" + lang
+									+ "\" fontname=\"" + font + "\">\n");
+							bpara = true;
+						}
+					} else {
+						if (!bpara) {
+							// paragraph
+							sbOut.append("<p id=\"page" + page.pageno + "p" + ipara++ + "\" lang=\"" + text.lang
+									+ "\" fontname=\"" + text.fontfamily + "\">\n");
+							bpara = true;
+						}
+
+						// line
+						sbOut.append(text.text.trim());
+						sbOut.append((keepBrTags == 1 ? "<br />" : "") + "\n");
+					}
+				}
+				if (ipara > 1) {
+					sbOut.append("</p>\n");
+				}
+			}
+
+			sbOut.append("</div>\n");
+
+		}
+		sbOut.append("</body>\n");
+		sbOut.append("</html>\n");
+
+		return sbOut;
+	}
+
+	/**
+	 * Extract text properties into object
+	 */
+	private TextObject getTextObject(String line, HashMap<String, StyleObject> mapStyle) {
 		TextObject obj = new TextObject();
 
 		obj.top = common.getFloat(patternTop.matcher(line).replaceAll("$1"));
 		obj.left = common.getFloat(patternLeft.matcher(line).replaceAll("$1"));
-		obj.height = common.getFloat(patternHeight.matcher(line).replaceAll("$1"));
 		obj.width = common.getFloat(patternWidth.matcher(line).replaceAll("$1"));
+		obj.height = common.getFloat(patternHeight.matcher(line).replaceAll("$1"));
 		obj.bottom = obj.top + obj.height;
 		obj.right = obj.left + obj.width;
-		obj.fontfamily = patternFontFamily.matcher(line).replaceAll("$1");
-		obj.fontsize = common.getFloat(patternFontSize.matcher(line).replaceAll("$1"));
-		obj.text = patternWord.matcher(line).replaceAll("$1");
-		obj.wordspacing = common.getFloat(patternWordSpacing.matcher(line).replaceAll("$1"));
-		if (line.indexOf("color:") > -1) {
-			obj.color = patternColor.matcher(line).replaceAll("$1");
-		}
-		if (line.indexOf("font-weight") > -1) {
-			obj.fontweight = patternFontWeight.matcher(line).replaceAll("$1");
-		}
-		if (line.indexOf("font-style") > -1) {
-			obj.fontstyle = patternFontStyle.matcher(line).replaceAll("$1");
+		obj.text = common.getStr(patternWord.matcher(line).replaceAll("$1"));
+		obj.class_ = common.getStr(patternFont.matcher(line).replaceAll("$1"));
+
+		if (mapStyle != null && mapStyle.containsKey(obj.class_)) {
+			StyleObject css = mapStyle.get(obj.class_);
+			obj.fontsize = css.size;
+			obj.fontfamily = css.family;
+			obj.color = css.color;
 		}
 
-		// get font style
-		String sFontStyle = "font-family:" + obj.fontfamily + ";" + "font-size:" + obj.fontsize + "pt;";
-		if (obj.fontweight != null)
-			sFontStyle += "font-weight:" + obj.fontweight + ";";
+		String text = obj.text;
 
-		if (obj.fontstyle != null)
-			sFontStyle += "font-style:" + obj.fontstyle + ";";
+		if (patternBold.matcher(text).matches()) {
+			obj.fontweight = "bold";
+		}
+		if (patternLink.matcher(text).matches()) {
+			obj.islink = true;
+		}
 
-		obj.style = sFontStyle;
+		text = text.replaceAll("<br\\/>", "_LSBRLS_");
+		text = text.replaceAll("<[^>]*>", "");
+		text = text.replaceAll("&#160;", " ").replaceAll("\\s{2,100}", " ");
+		text = text.replaceAll("_LSBRLS_", "<br/>");
+		obj.text = text;
 
 		return obj;
 	}
 
+	/**
+	 * Consider to add text object into the page
+	 */
 	private boolean checkLineAdd(float pageWidth, float pageHeight, TextObject text) {
 		if (text.left < 0 || text.top < 0 || text.left > pageWidth || text.top > pageHeight) {
 			return false;
@@ -731,681 +1155,287 @@ public class PDFExtract {
 	}
 
 	/**
-	 * Draw box to html
+	 * Check next font change
 	 */
-	private StringBuffer drawHtmlBox(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages)
-			throws IOException {
-		StringBuffer htmlBufferOut = new StringBuffer();
-		List<PageObject> pages = refPages.get();
+	private boolean isFontChanged(TextObject text, TextObject nextText) {
+		if ((text.fontsize != nextText.fontsize && !isEquals(text.height, nextText.height))
+				|| (!text.color.equals(nextText.color) && !isEquals(text.top, nextText.top))) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Check next class change
+	 */
+	private boolean isClassChanged(TextObject text, TextObject nextText) {
+		if (!text.class_.equals(nextText.class_)) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Get maximum count of the list
+	 */
+	private Float getMaxCount(HashMap<Float, Integer> map) {
+
+		if (map == null || map.size() == 0) {
+			return 0f;
+		} else {
+			map = map.entrySet().stream().sorted((Map.Entry.<Float, Integer>comparingByValue().reversed())).collect(
+					Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+			return map.entrySet().iterator().next().getKey();
+		}
+	}
+
+	/**
+	 * Get maximum language count
+	 */
+	private String getMaxLangCount(HashMap<String, Integer> map) {
+
+		if (map == null || map.size() == 0) {
+			return defaultLang;
+		} else {
+			map = map.entrySet().stream().sorted((Map.Entry.<String, Integer>comparingByValue().reversed())).collect(
+					Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
+			return map.entrySet().iterator().next().getKey();
+		}
+	}
+
+	/**
+	 * Create new text object with value
+	 */
+	private TextObject getNewText(String val) {
+		TextObject t = new TextObject();
+		t.text = val;
+		return t;
+	}
+
+	/**
+	 * Compare two numbers
+	 */
+	private boolean isEquals(Float f1, Float f2) {
+		if (Math.abs(f1 - f2) <= 8) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Check next text is too far
+	 */
+	private boolean isTooFar(TextObject text, TextObject nextText) {
+		if (text.top - text.bottom > text.height || nextText.top - text.bottom > nextText.height
+				|| Math.abs(text.top - nextText.top) > (text.height + nextText.height) / 2 * 5) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Consider top position to merge an object
+	 */
+	private boolean isMergeTop(TextObject text, TextObject nextText) {
+		if (isEquals(text.top, nextText.top) && !isFontChanged(text, nextText) && nextText.left - text.right < 200) {
+			return true;
+		}
+		return false;
+	}
+
+	/**
+	 * Consider text can detect language or not If it too short sentence, no detect
+	 */
+	private boolean canDetectLang(TextObject text) {
+		String str = text.text;
+		str = str.replaceAll(
+				"[\\?\\!\\,0-9\\-\\_\\#\\*\\&\\(\\)\\+\\=\\@\\%\\<\\>\\{\\}\\[\\]\\^\\\\\\/\\;\\.{2,100}]*", "");
+		str = str.replaceAll("\\s\\.{2,100}", "");
+		str = str.replaceAll("\\:", " ");
+		str = str.replaceAll("[σΦϕ∈†τψη∇π∑∂αβ→∏ε]*", "");
+		str = str.replaceAll("\\s{2,100}", " ");
+		str = str.trim();
+
+		int wordlength = str.split(" ", -1).length;
+		int charlength = str.replaceAll(" ", "").length();
+		if (wordlength > 10 && charlength > 50) {
+			return true;
+		} else {
+			return false;
+		}
+	}
+
+	/**
+	 * Collect languages detected in the document and calculate percentage
+	 * appearance
+	 */
+	private List<LangObject> getLangList(HashMap<String, Integer> map) {
+
+		List<LangObject> langList = new ArrayList<>();
+
+		// total
+		float total = 0;
+		for (Map.Entry<String, Integer> hash : map.entrySet()) {
+			total += common.getDouble(hash.getValue());
+		}
+
+		// calculate percentage
+		for (Map.Entry<String, Integer> hash : map.entrySet()) {
+			float percent = (common.getFloat(hash.getValue()) * 100) / total;
+
+			LangObject lang = new LangObject();
+			lang.name = hash.getKey();
+			lang.percent = percent;
+			langList.add(lang);
+		}
+
+		// sort
+		Collections.sort(langList, new Comparator<LangObject>() {
+			@Override
+			public int compare(LangObject l1, LangObject l2) {
+				return Float.compare(l2.percent, l1.percent);
+			}
+		});
+
+		return langList;
+	}
+
+	/**
+	 * Get first n words of the line
+	 */
+	private String getFirstWords(String str) {
+
+		String[] words = str.split(" ");
+		int wordlength = words.length;
+
+		String newStr = "";
+		for (int i = 0; i <= maxWordsJoin && i < wordlength; i++) {
+			newStr += " " + words[i];
+		}
+
+		return newStr.trim();
+	}
+
+	/**
+	 * Get last n words of the line
+	 */
+	private String getLastWords(String str) {
+
+		String[] words = str.trim().split(" ");
+		int wordlength = words.length;
+
+		int count = 0;
+		String newStr = "";
+		for (int i = wordlength - 1; i >= 0 && count <= maxWordsJoin; i--, count++) {
+			newStr = words[i] + " " + newStr;
+		}
+
+		return newStr.trim();
+	}
+
+	/**
+	 * Get sentence join model for language
+	 */
+	private String getSentenceJoinModel(String lang) {
+		if (config != null && config.get(lang) != null) {
+			return config.get(lang).sentenceJoinModel;
+		}
+		return "";
+	}
+
+	/**
+	 * Execute sentence join by language
+	 */
+	private List<TextObject> sentenceJoin(List<TextObject> texts, String lang) {
+		List<TextObject> newTexts = new ArrayList<>();
 		try {
-			int nPage = 0;
-			String sContent = htmlBuffer.toString();
 
-			Matcher m = patternPageStartTag.matcher(sContent);
-			while (m.find()) {
-				m.appendReplacement(htmlBufferOut, "$0\n");
+			if (texts.size() < 2)
+				return texts;
 
-				PageObject page = pages.get(nPage);
-				for (ColumnObject column : page.columns) {
-					htmlBufferOut.append(column.html + "\n");
-					for (ParagraphObject paragraph : column.paragraphs) {
-						htmlBufferOut.append(paragraph.html + "\n");
-						for (LineObject line : paragraph.lines) {
-							htmlBufferOut.append(line.html + "\n");
-						}
+			SentenceJoin sj;
+
+			synchronized (_objectWorker) {
+
+				if (_hashSentenceJoin.containsKey(lang)) {
+					sj = _hashSentenceJoin.get(lang);
+				} else {
+
+					String scriptPath = config.getSentenceJoinScript();
+					String modelPath = getSentenceJoinModel(lang);
+					if (common.IsExist(scriptPath) && !common.IsEmpty(modelPath)) {
+						sj = new SentenceJoin(lang, scriptPath, modelPath);
+						_hashSentenceJoin.put(lang, sj);
+					} else {
+						sj = null;
+						_hashSentenceJoin.put(lang, sj);
 					}
 				}
-				nPage++;
-			}
-			m.appendTail(htmlBufferOut);
-		} finally {
-		}
 
-		return htmlBufferOut;
-	}
-
-	/**
-	 * Get boxes
-	 */
-	private void getBox(AtomicReference<List<PageObject>> refPages) {
-		List<PageObject> pages = refPages.get();
-		for (PageObject page : pages) {
-
-			if (page.texts.size() > 0) {
-
-				List<ColumnObject> columns = new ArrayList<ColumnObject>();
-				List<ParagraphObject> paragraphs = new ArrayList<ParagraphObject>();
-				List<LineObject> lines = new ArrayList<LineObject>();
-				List<TextObject> texts = new ArrayList<TextObject>();
-
-				ColumnObject column = null;
-				ParagraphObject paragraph = null;
-				LineObject line = null;
-
-				for (int i = 0, len = page.texts.size(); i < len; i++) {
-
-					float gap_line = 0, gap_word_next = 0, gap_word_prev = 0;
-					float diff_top_prev = 0, diff_top_next = 0, diff_left_next = 0;
-
-					TextObject text = page.texts.get(i);
-					TextObject next_text = (i + 1 < len ? page.texts.get(i + 1) : null);
-					TextObject prev_text = (i > 0 ? page.texts.get(i - 1) : null);
-
-					//
-					if (prev_text != null) {
-						diff_top_prev = Math.abs(prev_text.top - text.top);
-						if (diff_top_prev < 2)
-							diff_top_prev = 0;
-						gap_word_prev = Math.abs(prev_text.left + prev_text.width - text.left);
-					}
-
-					//
-					if (next_text != null) {
-						diff_top_next = Math.abs(text.top - next_text.top);
-						diff_left_next = Math.abs(text.left - next_text.left);
-
-						if (diff_top_next > 0) {
-							gap_line = Math.abs(text.top + text.height - next_text.top);
-						}
-
-						if (diff_top_next < 2)
-							diff_top_next = 0;
-						if (diff_left_next < 2)
-							diff_left_next = 0;
-
-						gap_word_next = Math.abs(text.left + text.width - next_text.left);
-					}
-
-					/*
-					 * LINE
-					 */
-					if (i == 0 || texts.size() == 0 || (prev_text != null && diff_top_prev == 0 && gap_word_prev > 15)
-							|| (prev_text != null && diff_top_prev > 0
-									&& Math.abs(prev_text.top + prev_text.height - (text.top + text.height)) > 2
-									&& diff_top_prev > line.height)) {
-						// start new line
-						line = new LineObject(text.top, text.left, text.height, text.width);
-					} else {
-						line.top = Math.min(line.top, text.top);
-						line.left = Math.min(line.left, text.left);
-						line.bottom = Math.max(line.bottom, text.bottom);
-						line.right = Math.max(line.right, text.right);
-						line.width = line.right - line.left + 1;
-						line.height = Math.max(line.height, text.height);
-					}
-
-					if (!texts.contains(text)) {
-						texts.add(text);
-					}
-
-					if ((next_text != null && diff_top_next == 0 && gap_word_next < 15)
-							|| (next_text != null && gap_word_next < 15
-									&& Math.abs(text.top + text.height - (next_text.top + next_text.height)) < Math
-											.max(text.height, next_text.height) / 2)) {
-						// next text is same line
-						double gap = Math.abs(Math.abs(text.left - next_text.left) - text.width);
-						line.width += (gap);
-					} else {
-						// next text is new line
-						// end current line
-						if (line != null) {
-							line.color = BoxColor.LINE.getColor();
-							line.html = getDIV(line.top, line.left, line.height, line.width, BoxColor.LINE.getColor());
-							line.texts.addAll(texts);
-							if (!lines.contains(line)) {
-								lines.add(line);
-							}
-							texts.clear();
-						}
-						// line = null;
-					}
-
-					/*
-					 * PARAGRAPH
-					 */
-					if (paragraph == null) {
-						// start new paragraph
-						paragraph = new ParagraphObject(line.top, line.left, line.height, line.width);
-					} else {
-						paragraph.top = Math.min(paragraph.top, line.top);
-						paragraph.left = Math.min(paragraph.left, line.left);
-						paragraph.bottom = Math.max(paragraph.bottom, line.bottom);
-						paragraph.right = Math.max(paragraph.right, line.right);
-						paragraph.height = paragraph.bottom - paragraph.top + 1;
-						paragraph.width = paragraph.right - paragraph.left + 1;
-					}
-
-					if (lines.size() > 0
-							&& ((diff_top_next > 0 && gap_line > (text.height / 2) && diff_top_next > line.height)
-									|| (next_text == null
-											|| (diff_top_next > text.height / 2 && !text.fontfamily.contains("Bold")
-													&& next_text.fontfamily.contains("Bold")))
-									|| (diff_top_next > 0 && line.left < text.left
-											&& (next_text == null
-													|| (gap_line > Math.min(text.height, next_text.height) * 2)))
-									|| (next_text == null || (diff_top_next > 0 && gap_line > text.height / 2
-											&& diff_top_next > line.height && next_text.left > line.left)))) {
-
-						// end paragraph
-						if (paragraph != null) {
-							paragraph.color = BoxColor.PARAGRAPH.getColor();
-							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width,
-									BoxColor.PARAGRAPH.getColor());
-							paragraph.lines.addAll(lines);
-							paragraphs.add(paragraph);
-							lines.clear();
-							texts.clear();
-							paragraph = null;
-						}
-						// line = null;
-					}
-
-					/*
-					 * COLUMN
-					 */
-					if (column == null) {
-						// start new column
-						column = new ColumnObject(line.top, line.left, line.height, line.width);
-					} else {
-						column.top = Math.min(column.top, line.top);
-						column.left = Math.min(column.left, line.left);
-						column.bottom = Math.max(column.bottom, line.bottom);
-						column.right = Math.max(column.right, line.right);
-						column.height = column.bottom - column.top + 1;
-						column.width = column.right - column.left + 1;
-					}
-
-					if (paragraphs.size() > 0 && (
-
-					/*
-					 * next top not same + left not same + gap more than min height*1.8
-					 */
-					(diff_top_next > 0 && line.left < text.left
-							&& (next_text == null || (gap_line > Math.min(text.height, next_text.height) * 2)))
-
-							/* diff top more than line height time 5 */
-							|| (next_text == null || (diff_top_next > line.height * 5))
-
-							/*
-							 * diff top more than line height + height not same + diff height more than 10
-							 */
-							|| (next_text == null || (diff_top_next > line.height && next_text.left > column.left
-									&& text.height != next_text.height
-									&& Math.abs(text.height - next_text.height) > 10))
-
-							/*
-							 * diff top more than line height + text not bold + next text is bold + height
-							 * not same + left not same + color not same + big height
-							 */
-							|| (next_text == null || (diff_top_next > line.height && !text.fontfamily.contains("Bold")
-									&& next_text.fontfamily.contains("Bold") && text.height != next_text.height
-									&& text.left != next_text.left && !text.color.equals(next_text.color)
-									&& text.height > 20))
-
-							/*
-							 * diff top more than line height time 3 + text not bold + next text is bold +
-							 * height not same + left not same
-							 */
-							|| (next_text == null || (diff_top_next > line.height * 3
-									&& !text.fontfamily.contains("Bold") && next_text.fontfamily.contains("Bold")
-									&& text.height != next_text.height && text.left != next_text.left))
-
-							/*
-							 * diff top more than line height time 2 + text not bold + next text is bold +
-							 * height not same + has gap line + big height
-							 */
-							|| (next_text == null
-									|| (diff_top_next > line.height * 2 && !text.fontfamily.contains("Bold")
-											&& next_text.fontfamily.contains("Bold") && text.height != next_text.height
-											&& gap_line > 0 && text.height > 20 && next_text.height > 20))
-
-							/*
-							 * diff top more than line height time 3 + text not bold + next text is bold +
-							 * height not same + not big height + next not big height
-							 */
-							|| (next_text == null
-									|| (diff_top_next > line.height * 3 && !text.fontfamily.contains("Bold")
-											&& next_text.fontfamily.contains("Bold") && text.height != next_text.height
-											&& text.height <= 20 && next_text.height <= 20)))) {
-
-						// end column
-						if (column != null) {
-							column.color = BoxColor.COLUMN.getColor();
-							column.html = getDIV(column.top, column.left, column.height, column.width,
-									BoxColor.COLUMN.getColor());
-							column.paragraphs.addAll(paragraphs);
-							columns.add(column);
-
-							paragraphs.clear();
-							paragraph = null;
-							lines.clear();
-							texts.clear();
-							column = null;
-						}
-						// line = null;
-					}
-
-					if (i == len - 1) {
-						// last text object in page
-						if (paragraph != null) {
-							paragraph.width += line.width;
-							paragraph.color = BoxColor.PARAGRAPH.getColor();
-							paragraph.html = getDIV(paragraph.top, paragraph.left, paragraph.height, paragraph.width,
-									BoxColor.PARAGRAPH.getColor());
-							paragraph.lines.addAll(lines);
-							paragraphs.add(paragraph);
-						}
-						if (column != null) {
-							column.width += line.width;
-							column.color = BoxColor.COLUMN.getColor();
-							column.html = getDIV(column.top, column.left, column.height, column.width,
-									BoxColor.COLUMN.getColor());
-							column.paragraphs.addAll(paragraphs);
-							columns.add(column);
-						}
-						page.columns.addAll(columns);
-						columns.clear();
-						paragraphs.clear();
-						lines.clear();
-						texts.clear();
-						column = null;
-						paragraph = null;
-						line = null;
-					}
+				if (sj != null && sj.status() != WorkerStatus.RUNNING && sj.status() != WorkerStatus.LOADING) {
+					sj.start();
 				}
 			}
 
-		}
-	}
+			if (sj != null && sj.status() == WorkerStatus.RUNNING) {
+				for (int i = texts.size() - 1, start = 0; i >= start; i--) {
+					TextObject text = texts.get(i);
 
-	private String getDIV(double TOP, double LEFT, double HEIGHT, double WIDTH, String color) {
-		String DIV = "<div class=\"p\" style=\"border: 1pt solid;top:" + TOP + "pt;left:" + LEFT + "pt;height:" + HEIGHT
-				+ "pt;width:" + WIDTH + "pt;background-color:transparent;color:" + color + ";\"></div>";
-		return DIV;
+					if (i - 1 >= 0) {
+						TextObject prevText = texts.get(i - 1);
+
+						String text1 = getLastWords(prevText.text);
+						String text2 = getFirstWords(text.text);
+
+						boolean isJoin = false;
+						if (!common.IsEmpty(text1) && !common.IsEmpty(text2) && !text1.trim().endsWith(".")
+								&& !text2.trim().startsWith("•")) {
+							isJoin = sj.execute(text1, text2);
+						}
+
+						if (isJoin) {
+							prevText.text = prevText.text.trim() + " " + text.text.trim();
+							text.deleted = true;
+						} else {
+							newTexts.add(text);
+						}
+					} else {
+						newTexts.add(text);
+					}
+
+				}
+
+				return Lists.reverse(newTexts);
+
+			}
+
+		} catch (Exception e) {
+			common.print(e.getMessage());
+		}
+
+		return texts;
 	}
 
 	/**
-	 * Normalize html
+	 * Shutdown sentence join process
 	 */
-	private StringBuffer Normalize(StringBuffer htmlBuffer, AtomicReference<List<PageObject>> refPages, String language)
-			throws Exception {
-		List<PageObject> pages = refPages.get();
+	public void shutdownProcess() throws Exception {
 		try {
-			StringBuilder sbPageAll = new StringBuilder();
-			AtomicReference<Hashtable<String, Integer>> hashClasses = new AtomicReference<Hashtable<String, Integer>>();
-			searchReplaceList = common.getSearchReplaceList();
-
-			for (PageObject page : pages) {
-				String pageContent = GetPageNormalizedHtml(page, hashClasses, language);
-				sbPageAll.append(pageContent);
-			}
-
-			/**
-			 * Get classes - page - the wrapping boundary of a page. - header - the wrapping
-			 * boundary of the page header. - footer - the wrapping boundary of the page
-			 * footer. - column - the wrapping boundary of a column. - line - the wrapping
-			 * boundary of the paragraph line. - h1 - the wrapping boundary of a the
-			 * paragraph h1. - h2 - the wrapping boundary of a the paragraph h2.
-			 */
-
-			AtomicReference<StringBuilder> sbPageAllNomalize = new AtomicReference<StringBuilder>();
-			sbPageAllNomalize.set(sbPageAll);
-			String sClasses = GetNormalizeClasses(hashClasses.get(), sbPageAllNomalize);
-
-			return new StringBuffer(
-					GetTemplate(Tempate.body.toString()).replace("[" + TempateContent.STYLE.toString() + "]", sClasses)
-							.replace("[" + TempateContent.BODY.toString() + "]", sbPageAllNomalize.get().toString()));
-
-		} catch (Exception e1) {
-			throw e1;
-		} finally {
-		}
-	}
-
-	/**
-	 * Get normalize classes
-	 */
-	private String GetNormalizeClasses(Hashtable<String, Integer> hashClasses,
-			AtomicReference<StringBuilder> sbPageAll) {
-		StringBuilder _sbPageAll = sbPageAll.get();
-		StringBuilder sbClasses = new StringBuilder();
-		Hashtable<Float, String> hashFontSize = new Hashtable<Float, String>();
-		String sGlobalStyle = "";
-		int iGlobalStyle = 0;
-
-		List<String> listClasse = new ArrayList<String>(hashClasses.keySet());
-		for (String classes : listClasse) {
-			if (hashClasses.get(classes) > iGlobalStyle) {
-				iGlobalStyle = hashClasses.get(classes);
-				sGlobalStyle = classes;
-			}
-		}
-
-		for (String classes : listClasse) {
-			if (!sGlobalStyle.equals(classes)) {
-				float fFontSize = common.getFloat(classes.replaceAll(REGEX_FONTSIZE, "$1"));
-				for (int i = 0; i < 10; i++) {
-					if (hashFontSize.containsKey(fFontSize)) {
-						fFontSize = (float) (fFontSize + fontSizeScale);
-					} else
-						break;
-				}
-				hashFontSize.put(fFontSize, classes);
-			}
-		}
-
-		// replace global style
-		_sbPageAll = new StringBuilder(_sbPageAll.toString().replaceAll("\\n+", "\n").replace(sGlobalStyle, ""));
-
-		sbClasses.append("body {");
-		sbClasses.append(sGlobalStyle);
-		sbClasses.append("}");
-		sbClasses.append("\np{");
-		sbClasses.append("border:1px solid green;");
-		sbClasses.append("}");
-		sbClasses.append("\n.page{");
-		sbClasses.append("border:1px dashed silver;");
-		sbClasses.append("}");
-		sbClasses.append("\n.header{");
-		sbClasses.append("border:1px solid pink;");
-		sbClasses.append("}");
-		sbClasses.append("\n.footer{");
-		sbClasses.append("border:1px solid yellow;");
-		sbClasses.append("}");
-		sbClasses.append("\n.column{");
-		sbClasses.append("border:1px solid red;");
-		sbClasses.append("}");
-		sbClasses.append("\n.line{");
-		sbClasses.append("border:0.5px solid blue;");
-		sbClasses.append("}");
-
-		List<Float> listFontSize = new ArrayList<Float>(hashFontSize.keySet());
-		Collections.sort(listFontSize);
-		int iHCount = listFontSize.size();
-		for (float fontsize : listFontSize) {
-
-			sbClasses.append("\n.h" + iHCount + " {");
-			sbClasses.append(hashFontSize.get(fontsize));
-			sbClasses.append("}");
-			// replace h style
-			_sbPageAll = new StringBuilder(_sbPageAll.toString().replace(" </span>", "</span>").replaceAll(
-					"(class=\")(line)(\" style=\"[^<>]+)(" + hashFontSize.get(fontsize).replace("-", "\\-")
-							.replace("+", "\\+").replace(".", "\\.").replace(" ", "[ ]") + ")(\")",
-					"$1$2 h" + iHCount + "$3$5"));
-			iHCount--;
-		}
-
-		sbPageAll.set(_sbPageAll);
-
-		return sbClasses.toString();
-	}
-
-	/**
-	 * Get page normalize html
-	 */
-	private String GetPageNormalizedHtml(PageObject page, AtomicReference<Hashtable<String, Integer>> hashClasses,
-			String language) {
-		String sPageNormalized = "";
-		Hashtable<String, Integer> _hashClasses = hashClasses.get();
-		if (_hashClasses == null)
-			_hashClasses = new Hashtable<String, Integer>();
-
-		int iPageID = page.pageno;
-
-		List<ColumnObject> listColumnLeft = page.columns;
-		Collections.sort(listColumnLeft, new BoxComparator());
-		String sColumnAll = "";
-		int iColumnID = 1;
-
-		// Loop each column
-		for (ColumnObject column : listColumnLeft) {
-
-			String sColumnParagraphAll = "";
-			int iParagraphID = 1;
-
-			List<ParagraphObject> listParagraph = column.paragraphs;
-			Collections.sort(listParagraph, new BoxComparator());
-
-			// Loop each paragraph in column
-			for (ParagraphObject paragraph : listParagraph) {
-
-				String sColumnParagraphLineAll = "";
-
-				List<LineObject> listLine = paragraph.lines;
-				Collections.sort(listLine, new BoxComparator());
-
-				// Loop each line in paragraph
-				int iLineID = 0;
-				float prevRight = 0;
-				for (LineObject line : listLine) {
-
-					List<TextObject> listText = line.texts;
-					Collections.sort(listText, new TextComparator());
-
-					int round = 0;
-					String sStyle = "";
-					String sLine = "";
-					// Loop each text in line
-					for (TextObject text : listText) {
-						if (text.text.indexOf('\uFFFD') > -1) {
-							if (line.height > (text.fontsize * 2) + 1) {
-								line.height = (text.fontsize * 2) + 1;
-								line.bottom = line.top + line.height;
-							}
-						}
-						sStyle = text.style;
-						// add counting in classes object
-						if (_hashClasses.containsKey(sStyle))
-							_hashClasses.put(sStyle, _hashClasses.get(sStyle) + 1);
-						else
-							_hashClasses.put(sStyle, 1);
-					}
-
-					// Loop each text in line
-					for (TextObject text : listText) {
-						if (text.fontsize < line.height && (text.bottom < line.bottom - (line.height / 2) + 1
-								|| text.top > line.bottom - (line.height / 2) + 1
-								|| (line.height - text.height > 1 && text.height - text.fontsize > 2))) {
-							// <sup>
-							if (Math.abs(text.top - line.top) < 1) {
-								text.text = "<sup>" + text.text + "</sup>";
-							} else {
-								text.text = "<sub>" + text.text + "</sub>";
-							}
-						}
-						if (round > 0 && text.left - prevRight >= 0.2) {
-							sLine += " ";
-						}
-						sLine += text.text;
-						prevRight = text.left + text.width;
-						round++;
-						sStyle = text.style;
-					}
-
-					sLine = common.replaceText(searchReplaceList, sLine);
-					sStyle = "";
-
-					String sColumnParagraphLine = GetTemplate(Tempate.columnparagraphline.toString())
-							.replace("[" + TempateID.COLUMNPARAGRAPHLINEID.toString() + "]",
-									common.getStr(iPageID) + "c" + common.getStr(iColumnID) + "p"
-											+ common.getStr(iParagraphID) + "l" + common.getStr(iLineID))
-							.replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(line.top))
-							.replace("[" + TempateStyle.LEFT.toString() + "]", common.getStr(line.left))
-							.replace("[" + TempateStyle.HEIGHT.toString() + "]", common.getStr(line.height))
-							.replace("[" + TempateStyle.WIDTH.toString() + "]", common.getStr(line.width))
-							.replace("[" + TempateStyle.LINESTYLE.toString() + "]", sStyle)
-							.replace("[" + TempateContent.COLUMNPARAGRAPHLINE.toString() + "]", sLine);
-
-					if (scriptEngine != null && sColumnParagraphLine.length() > 0) {
-						String sResult = common.getStr(invokeJS("repairObjectSequence", sColumnParagraphLine));
-						if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length) {
-							sColumnParagraphLine = sResult;
-						}
-					}
-
-					sColumnParagraphLineAll += sColumnParagraphLine + "\n";
-					iLineID++;
-				}
-
-				if (scriptEngine != null && sColumnParagraphLineAll.length() > 0) {
-					// call analyzeJoins
-					String sResult = common.getStr(invokeJS("analyzeJoins", sColumnParagraphLineAll, language));
-					if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length) {
-						sColumnParagraphLineAll = sResult;
-					}
-
-					// call isHeader
-					sResult = common.getStr(invokeJS("isHeader", sColumnParagraphLineAll));
-					if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length) {
-						sColumnParagraphLineAll = sResult;
-					}
-
-					// call isFooter
-					sResult = common.getStr(invokeJS("isFooter", sColumnParagraphLineAll));
-					if (sResult.split("\n").length == sColumnParagraphLineAll.split("\n").length) {
-						sColumnParagraphLineAll = sResult;
+			if (_hashSentenceJoin != null && _hashSentenceJoin.size() > 0) {
+				for (Map.Entry<String, SentenceJoin> hash : _hashSentenceJoin.entrySet()) {
+					if (hash.getValue() != null) {
+						hash.getValue().stop();
 					}
 				}
-
-				String sColumnParagraph = GetTemplate(Tempate.columnparagraph.toString())
-						.replace("[" + TempateID.COLUMNPARAGRAPHID.toString() + "]",
-								common.getStr(iPageID) + "c" + common.getStr(iColumnID) + "p"
-										+ common.getStr(iParagraphID))
-						.replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(paragraph.top))
-						.replace("[" + TempateStyle.LEFT.toString() + "]", common.getStr(paragraph.left))
-						.replace("[" + TempateStyle.HEIGHT.toString() + "]", common.getStr(paragraph.height))
-						.replace("[" + TempateStyle.WIDTH.toString() + "]", common.getStr(paragraph.width))
-						.replace("[" + TempateContent.COLUMNPARAGRAPH.toString() + "]", sColumnParagraphLineAll);
-				sColumnParagraphAll += sColumnParagraph;
-				iParagraphID++;
-
 			}
-			String sColumn = GetTemplate(Tempate.column.toString())
-					.replace("[" + TempateID.COLUMNID.toString() + "]",
-							common.getStr(iPageID) + "c" + common.getStr(iColumnID))
-					.replace("[" + TempateStyle.TOP.toString() + "]", common.getStr(column.top))
-					.replace("[" + TempateStyle.LEFT.toString() + "]", common.getStr(column.left))
-					.replace("[" + TempateStyle.HEIGHT.toString() + "]", common.getStr(column.height))
-					.replace("[" + TempateStyle.WIDTH.toString() + "]", common.getStr(column.width))
-					.replace("[" + TempateContent.COLUMN.toString() + "]", sColumnParagraphAll);
-
-			sColumnAll += sColumn;
-			iColumnID++;
-		}
-		sPageNormalized = GetTemplate(Tempate.page.toString())
-				.replace("[" + TempateID.PAGEID.toString() + "]", common.getStr(iPageID))
-				.replace("[" + TempateContent.PAGE.toString() + "]", sColumnAll);
-
-		hashClasses.set(_hashClasses);
-
-		return sPageNormalized;
-	}
-
-	/**
-	 * Invoke JS function
-	 */
-	private Object invokeJS(String function, Object... args) {
-		Object result = null;
-		if (scriptEngine != null && !failFunctionList.contains(function)) {
-			try {
-				result = scriptEngine.invokeFunction(function, args);
-			} catch (Exception e) {
-				if (!failFunctionList.contains(function)) {
-					failFunctionList.add(function);
-				}
-			}
-		}
-		return result;
-	}
-
-	/**
-	 * Get template document
-	 */
-	private Document getDocument() {
-		Document doc = null;
-		try {
-			InputStream fTemplate = getClass().getClassLoader().getResourceAsStream("template.xml");
-			DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-			doc = dBuilder.parse(fTemplate);
-			doc.getDocumentElement().normalize();
-		} catch (SAXException | ParserConfigurationException | IOException e1) {
-			e1.printStackTrace();
-		}
-		return doc;
-	}
-
-	/**
-	 * Get template
-	 */
-	private String GetTemplate(String sTagName) {
-		String sContent = "";
-
-		try {
-			Document doc = getDocument();
-			Node node = doc.getElementsByTagName(sTagName).item(0);
-			sContent = node.getTextContent();
 		} catch (Exception e) {
 			throw e;
 		}
-		return sContent;
 	}
-
-	/**
-	 * Comparator class
-	 */
-	class BoxComparator implements Comparator<BoxObject> {
-		@Override
-		public int compare(BoxObject o1, BoxObject o2) {
-			Float x1 = o1.top;
-			Float x2 = o2.top;
-			if (Math.abs(x1 - x2) < 0.5)
-				x1 = x2;
-			Float y1 = o1.left;
-			Float y2 = o2.left;
-
-			int i = x1.compareTo(x2);
-			if (i == 0) {
-				i = y1.compareTo(y2);
-			}
-			return i;
-		}
-	}
-
-	/**
-	 * Comparator class
-	 */
-	class TextComparator implements Comparator<BoxObject> {
-		@Override
-		public int compare(BoxObject o1, BoxObject o2) {
-			if (o1.left < o2.left)
-				return -1;
-			else if (o1.left > o2.left)
-				return 1;
-			return 0;
-		}
-	}
-
-	/**
-	 * Output template enum
-	 */
-	enum Tempate {
-		body, page, header, headerparagraph, headerparagraphline, column, columnparagraph, columnparagraphline, footer,
-		footerparagraph, footerparagraphline
-	}
-
-	enum TempateContent {
-		STYLE, BODY, PAGE, HEADER, HEADERPARAGRAPH, HEADERPARAGRAPHLINE, COLUMN, COLUMNPARAGRAPH, COLUMNPARAGRAPHLINE,
-		FOOTER, FOOTERPARAGRAPH, FOOTERPARAGRAPHLINE
-	}
-
-	enum TempateID {
-		PAGEID, HEADERID, HEADERPARAGRAPHID, HEADERPARAGRAPHLINEID, COLUMNID, COLUMNPARAGRAPHID, COLUMNPARAGRAPHLINEID,
-		FOOTERID, FOOTERPARAGRAPHID, FOOTERPARAGRAPHLINEID
-	}
-
-	enum TempateStyle {
-		TOP, LEFT, WIDTH, HEIGHT, LINESTYLE
-	}
-
 }

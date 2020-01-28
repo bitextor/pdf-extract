@@ -6,6 +6,7 @@ import pdfextract.PDFExtract;
  */
 public class Main {
 	public static void main(String[] args) {
+		PDFExtract oExtractor = null;
 		try {
 
 			Common common = new Common();
@@ -20,8 +21,8 @@ public class Main {
 
 			}
 
-			String input = "", output = "", batchfile = "", options = "", logpath = "", rulepath = "", threadcount = "",
-					language = "", debug = "", verbose = "";
+			String input = "", output = "", batchfile = "", logpath = "", threadcount = "", verbose = "",
+					keepbrtags = "";
 			String key = "";
 
 			/**
@@ -29,12 +30,15 @@ public class Main {
 			 */
 			for (String parm : args) {
 
-				if (parm.startsWith("-")) {
-					key = parm.substring(1);
-					if (key.equals("D")) {
-						debug = "1";
+				if (parm.startsWith("--")) {
+					key = parm.substring(2);
+					if (key.equals("keepbrtags")) {
+						keepbrtags = "1";
 						key = "";
-					} else if (key.equals("v")) {
+					}
+				} else if (parm.startsWith("-")) {
+					key = parm.substring(1);
+					if (key.equals("v")) {
 						verbose = "1";
 						key = "";
 					}
@@ -47,26 +51,21 @@ public class Main {
 						batchfile = parm;
 					} else if (key.equals("L")) {
 						logpath = parm;
-					} else if (key.equals("R")) {
-						rulepath = parm;
 					} else if (key.equals("T")) {
 						threadcount = parm;
-					} else if (key.equals("LANG")) {
-						language = parm;
-					} else if (key.equals("o")) {
-						options = parm;
 					}
 					key = "";
 				}
 			}
 
+			common.setVerbose(common.getInt(verbose));
 			if (!common.IsEmpty(input) && !common.IsEmpty(output)) {
 				/**
 				 * Call function to extract single PDF file
 				 */
 				try {
-					PDFExtract oExtractor = new PDFExtract(logpath, common.getInt(verbose));
-					oExtractor.Extract(input, output, rulepath, language, options, common.getInt(debug));
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose));
+					oExtractor.Extract(input, output, common.getInt(keepbrtags));
 				} catch (Exception e) {
 					common.print("File: " + input + ", " + e.getMessage());
 				}
@@ -76,9 +75,8 @@ public class Main {
 				 * Call function to extract PDF with batch file
 				 */
 				try {
-					PDFExtract oExtractor = new PDFExtract(logpath, common.getInt(verbose));
-					oExtractor.Extract(batchfile, rulepath, common.getInt(threadcount), language, options,
-							common.getInt(debug));
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose));
+					oExtractor.Extract(batchfile, common.getInt(threadcount), common.getInt(keepbrtags));
 				} catch (Exception e) {
 					common.print("File: " + batchfile + ", " + e.getMessage());
 				}
@@ -92,6 +90,15 @@ public class Main {
 			System.out.println("Cannot start extract. Error=" + ex.getMessage());
 			System.exit(0);
 		} finally {
+			if (oExtractor != null) {
+				try {
+					oExtractor.shutdownProcess();
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				oExtractor = null;
+				System.gc();
+			}
 		}
 	}
 
