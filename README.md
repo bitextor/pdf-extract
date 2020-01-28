@@ -34,8 +34,7 @@ PDFExtract has several components and dependancies that are used for the followi
 - Sentence Join: A tool that analyzes text based on a specified language and determines if a left and a right portion of text are 2 parts of the same sentence and should be joined as a single sentence.
 
 ----
-## Installationjava -jar PDFExtract.jar -B sample-display.tab -L batch.log -T 3 
-```
+## Installation
 Installation instructions are provided in [INSTALL.md](INSTALL.md)
 
 ----
