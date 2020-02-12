@@ -40,7 +40,90 @@ Installation instructions are provided in [INSTALL.md](INSTALL.md)
 ----
 ## Using PDFExtract.jar
 
-PDFExtract can be used as a command line tool or as a library wihtin a Java project. PDFExtract processes individual files and can also operate in batch mode to process large lists of files. Within Paracrawl, PDFExtraxt streams data via stdin and stdout.
+PDFExtract can be used as a command line tool or as a library within a Java project. PDFExtract processes individual files and can also operate in batch mode to process large lists of files. Within Paracrawl, PDFExtraxt streams data via stdin and stdout.
+
+
+### PDFExtract.json
+PDFExtract configuration file, put it into the PDFExtract installation path beside PDFExtract.jar file.
+
+- `script > sentence_join`  specifies the path to the sentence join tool
+- `language[name=common] > config`  rules to common use for all
+- `language[name=common] > config > join_word`  rules for joining words ["rule for left side", "rule for right side", "join character"]
+- `language[name=common] > config > absolute_eof`  rules for identify end of sentence ["rule for left side", "rule for right side"]
+- `language[name=common] > config > normalize`  rules for normalize words ["rule", "word normalize"]
+- `language[name=common] > config > repair`  rules for repair words at the last step of the process
+- `language[name=language] > config`  rules use for specify language
+- `language[name=language] > config > sentencejoin_model`  specifies the prefix model path for sentence join tool by language
+- `language[name=language] > config > join_word`  rules for joining words by language
+- `language[name=language] > config > absolute_eof`  rules for identify end of sentence by language
+- `language[name=language] > config > normalize`  rules for normalize words by language
+- `language[name=language] > config > repair`  rules for repair words at the last step of the process of the language
+
+```
+{
+"script" : {
+	"sentence_join" : "/var/www/html/experiment/sentence-join/git/sentence-join.py"
+}, 
+"language" : 
+[
+	{
+		"name" : "common",
+		"config" : {
+			"join_words" : [
+				[".*[\\,\\&\\;\\:]$", "", " "],
+				[".*[a-z]+\\-$", "^[a-z]+.*", ""],
+				[".*[a-z]{1,}$", "^[a-z]+.*", " "],
+				[".*[\\,\\;\\s][A-Z]{1,1}$", "", " "],
+				[".*\\s(to|for|at|by)$", "", " "]
+			],
+			"absolute_eof" : [
+				[".*(?<!\\,|\\&|\\;|\\:|\\s[A-Z]{1,1})$", "^[0-9 ]{0,}[A-Z]+.*"],
+				[".*(\\?\\\"?|\\!\\\"?)$", ""],
+				[".*\\w\\.$", ""],
+				["", "^[•]+.*"]
+			],
+			"normalize" : [
+				[ "ﬀ", "ff"],
+				["ﬁ\\s?", "fi"],
+				["ﬂ\\s?", "fl"],
+				["ﬃ", "ffi"],
+				["ﬄ", "ffl"],
+				["ﬅ", "ft"],
+				["ﬆ", "st"],
+				["[“”]", "\""],
+				["[’´]", "'"],
+				["…", "..."],
+				["–", "-"],
+				[" ", ""],
+				["יִ", "!"]
+			],
+			"repair" : [
+				["\\s(\\,|\\)|\\]|\\;)", "$1"],
+				["(\\(\\[)\\s", "$1"],
+				["([^\\.])\\s(\\.)", "$1$2"]
+			]
+		}
+	},
+	{
+		"name" : "en",
+		"config" : {
+			"sentencejoin_model" : "/var/www/html/experiment/sentence-join/toy-model",
+			"join_words" : [
+			],
+			"absolute_eof" : [
+			],
+			"normalize" : [
+			],
+			"repair" : [
+			]
+		}
+	}
+	
+]
+}
+```
+
+
 
 ### Command-line PDF Extraction 
 The command-line PDFExtract is contained in the PDFExtract.jar package that may be downloaded and directly executed on all the java-enabled platforms.
@@ -63,7 +146,7 @@ java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<l
 This example processes a single English PDF file in English.
 
 ```sh
-java -jar PDFExtract.jar -I pdf-in/sample.pdf -O html-display/sample.htm
+java -jar PDFExtract.jar -I pdf-in/sample.pdf -O html-display/sample.html
 ```
 
 This example processes a batch of files as specified in `sample-display.tab` using 3 threads and writing to a user specified log file. Custom JavaScript rules for sentence joining and object sequence repairs is also specified.
@@ -115,7 +198,7 @@ import com.java.app.PDFExtract;
 PDFExtract pdf = new PDFExtract(logpath);
 
 String inputFile = "/data/test.pdf";
-String outputFile = "/data/test.htm";
+String outputFile = "/data/test.html";
 int threadCount = 5;
 int keepBrTags = 0; 
 

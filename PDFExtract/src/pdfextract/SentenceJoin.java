@@ -161,13 +161,11 @@ public class SentenceJoin {
 				_pWriter.flush();
 
 				String sOutput = _scan.nextLine();
-
 				return common.getBool(sOutput);
 
 			} catch (Exception e) {
 				common.print("execute sentence join [" + _language + "] failed. " + text1 + "\t" + text2 + " ,"
 						+ e.getMessage());
-				e.printStackTrace();
 			}
 		}
 

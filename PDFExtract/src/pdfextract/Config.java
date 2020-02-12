@@ -31,7 +31,7 @@ public class Config {
 				String left = jNormalize.getString(0);
 				String right = jNormalize.getString(1);
 
-				if (!common.IsEmpty(left) && !common.IsEmpty(right)) {
+				if (!common.IsEmpty(left) && right.length() > 0) {
 					NormalizeInfo norm = new NormalizeInfo();
 					norm.search = left;
 					norm.replace = right;

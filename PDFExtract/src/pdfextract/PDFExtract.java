@@ -53,7 +53,7 @@ public class PDFExtract {
 	private Pattern patternFont = Pattern.compile(".*font=\"([0-9\\.]+)\".*");
 	private Pattern patternId = Pattern.compile(".*id=\"([0-9]+)\".*");
 	private Pattern patternSize = Pattern.compile(".*size=\"([0-9]+)\".*");
-	private Pattern patternFamily = Pattern.compile(".*family=\"([0-9a-zA-Z\\s\\-\\_\\+]+)\".*");
+	private Pattern patternFamily = Pattern.compile(".*family=\"([^\"]+)\".*");
 	private Pattern patternColor = Pattern.compile(".*color=\"(#[a-z0-9]+)\".*");
 	private Pattern patternBold = Pattern.compile("<b>([^<]*)<\\/b>");
 	private Pattern patternLink = Pattern.compile("<a ?[^>]*>([^<]*)<\\/a>");
@@ -419,8 +419,7 @@ public class PDFExtract {
 			if (writeLogFile) {
 				common.writeLog(logPath, message, true);
 			} else {
-				if (!runnable)
-					common.print("Error: " + e.getMessage());
+				common.print("Error: " + e.getMessage());
 			}
 			throw e;
 		} finally {
@@ -469,7 +468,8 @@ public class PDFExtract {
 								common.print(inputFile, "Error: " + message);
 							common.writeLog(logPath, inputFile, "Error: " + message, true);
 						} else {
-							common.print(inputFile, "Error: " + message);
+							if (!runnable)
+								common.print(inputFile, "Error: " + message);
 						}
 					}
 				}
@@ -611,6 +611,10 @@ public class PDFExtract {
 				for (int i = 0, len = page.texts.size(); i < len; i++) {
 					TextObject text = page.texts.get(i);
 
+					if (common.IsEmpty(text.text)) {
+						text.deleted = true;
+						continue;
+					}
 					if (text.height > 0) {
 						int count = 0;
 						if (mapHeight.containsKey(text.height)) {
@@ -636,6 +640,8 @@ public class PDFExtract {
 				for (int i = 0, len = page.texts.size(); i < len; i++) {
 					TextObject text = page.texts.get(i);
 
+					if (text.deleted)
+						continue;
 					if (common.IsEmpty(text.text)) {
 						text.deleted = true;
 						continue;
@@ -647,6 +653,8 @@ public class PDFExtract {
 						for (int j = i + 1; j < len; j++) {
 							TextObject nextText = page.texts.get(j);
 
+							if (text.deleted)
+								continue;
 							if (common.IsEmpty(nextText.text)) {
 								nextText.deleted = true;
 								continue;
@@ -739,11 +747,6 @@ public class PDFExtract {
 
 				for (int i = 0, len = page.texts.size(); i < len; i++) {
 					TextObject text = page.texts.get(i);
-
-					if (page.pageno == 3) {
-						String s = "";
-						System.out.print(s);
-					}
 
 					if (text.deleted)
 						continue;
@@ -864,25 +867,27 @@ public class PDFExtract {
 					results = detectLang.find(text.text);
 					if (results != null && results.size() > 0) {
 						LanguageResult lang = results.get(0);
-						text.lang = lang.language;
+						if (lang.reliable) {
+							text.lang = lang.language;
 
-						if (config != null) {
-							langInfo = config.get(text.lang);
-							if (langInfo != null) {
-								normalizeList = langInfo.normalize;
+							if (config != null) {
+								langInfo = config.get(text.lang);
+								if (langInfo != null) {
+									normalizeList = langInfo.normalize;
 
-								/**
-								 * Normalize text by language
-								 */
-								common.replaceText(normalizeList, text.text);
+									/**
+									 * Normalize text by language
+									 */
+									text.text = common.replaceText(normalizeList, text.text);
+								}
 							}
-						}
 
-						int count = 0;
-						if (mapLang.containsKey(lang.language)) {
-							count = mapLang.get(lang.language);
+							int count = 0;
+							if (mapLang.containsKey(lang.language)) {
+								count = mapLang.get(lang.language);
+							}
+							mapLang.put(lang.language, count + 1);
 						}
-						mapLang.put(lang.language, count + 1);
 					}
 				}
 			}
@@ -962,6 +967,12 @@ public class PDFExtract {
 					} else {
 						texts.add(text);
 					}
+				}
+
+				if (texts.size() > 0) {
+					newTexts.add(getNewText(paraMarker));
+					newTexts.addAll(sentenceJoin(texts, currentLang));
+					texts.clear();
 				}
 
 				page.texts.clear();
@@ -1264,7 +1275,7 @@ public class PDFExtract {
 
 		int wordlength = str.split(" ", -1).length;
 		int charlength = str.replaceAll(" ", "").length();
-		if (wordlength > 10 && charlength > 50) {
+		if (wordlength > 10 || charlength > 30) {
 			return true;
 		} else {
 			return false;
@@ -1390,12 +1401,13 @@ public class PDFExtract {
 					if (i - 1 >= 0) {
 						TextObject prevText = texts.get(i - 1);
 
-						String text1 = getLastWords(prevText.text);
-						String text2 = getFirstWords(text.text);
+						String text1 = getLastWords(prevText.text).trim();
+						String text2 = getFirstWords(text.text).trim();
 
 						boolean isJoin = false;
 						if (!common.IsEmpty(text1) && !common.IsEmpty(text2) && !text1.trim().endsWith(".")
-								&& !text2.trim().startsWith("•")) {
+								&& !text2.trim().startsWith("•") && !text1.trim().equals(" ")
+								&& !text2.trim().equals(" ")) {
 							isJoin = sj.execute(text1, text2);
 						}
 

@@ -34,7 +34,7 @@ public class DetectLanguage {
 			if (result != null && result.length > 0) {
 				for (Result prop : result) {
 					if (prop.proportion > 0) {
-						resultlist.add(new LanguageResult(prop.language, prop.proportion * 100));
+						resultlist.add(new LanguageResult(prop.language, prop.proportion * 100, prop.isReliable));
 					}
 				}
 			}
@@ -46,10 +46,12 @@ public class DetectLanguage {
 	public class LanguageResult {
 		public String language = "";
 		public float percent = 0;
+		public boolean reliable = false;
 
-		public LanguageResult(String language_, float percent_) {
+		public LanguageResult(String language_, float percent_, boolean _realiable) {
 			language = language_;
 			percent = percent_;
+			reliable = _realiable;
 		}
 	}
 }

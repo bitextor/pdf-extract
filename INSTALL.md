@@ -12,25 +12,28 @@ git clone https://github.com/bitextor/pdf-extract.git
 2. Developers
    1. Import the projects into Eclipse (for developer)
    2. In Eclipse, go to File > Import > General and select Existing Projects into Eclipse.
-   3. Next to “Select root directory,” browse to the cloned repository on your computer where you downloaded all the files from Github. Then select Open and browse to `/gitproject/pdfextract/PDFExtract`.
+   3. Next to “Select root directory,” browse to the cloned repository on your computer where you downloaded all the files from Github. Then select Open and browse to `/gitproject/pdf-extract/PDFExtract`.
 
-# Dependancies
-All dependancies are included in the project folder.
+# Requirements
+
+1. poppler -- https://poppler.freedesktop.org/
+
+2. cld3 -- https://github.com/google/cld3
+
+
+# Dependencies
+All dependencies are included in the project folder.
 
 
 | Library | URL| Description |
 | --- | --- | --- |
-| commons-io-2.4.jar | https://commons.apache.org/proper/commons-io/download_io.cgi | Read / write file |
-| pdfbox-2.0.0.jar | https://pdfbox.apache.org/download.cgi | Convert PDF to HTML |
-| pdf2dom-1.7.jar	| https://mvnrepository.com/artifact/net.sf.cssbox/pdf2dom/1.7 | Convert PDF to HTML |
-|  fontbox-2.0.0.jar |	https://pdfbox.apache.org/download.cgi | Dependency of pdfbox |
-| FontVerter-1.2.19.jar |	https://mvnrepository.com/artifact/net.mabboud.fontverter/FontVerter/1.2.19 | Dependency of pdfbox |
-| commons-lang3-3.4.jar |	https://commons.apache.org/lang/download_lang.cgi | Dependency of pdfbox |
-| commons-logging-1.2.jar |	https://commons.apache.org/logging/download_logging.cgi | Dependency of pdfbox |
-| guava-15.0.jar |	https://mvnrepository.com/artifact/com.google.guava/guava/15.0 | Dependency of pdfbox |
-| javassist-3.18.2-GA.jar |	https://mvnrepository.com/artifact/org.javassist/javassist/3.18.2-GA | Dependency of pdfbox |
-| ch.qos.logback.classic-0.9.28.jar |	https://logback.qos.ch/download.html | Dependency of pdfbox |
-| ch.qos.logback.core-0.9.28.jar | https://logback.qos.ch/download.html | Dependency of pdfbox |
-| slf4j-api-1.6.1.jar |	https://www.slf4j.org/download.html | Dependency of pdfbox |
-| reflections-0.9.9.jar |	https://mvnrepository.com/artifact/org.reflections/reflections/0.9.9-RC1 | Dependency of pdfbox |
-| bcprov-jdk16-1.45.jar |	https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk16/1.45 | Dependency of pdfbox |
+| cld3-java.jar | https://github.com/xondre09/cld3-Java | Java wrapper for cld3 |
+| json-lib-2.4-jdk15.jar |	https://repo1.maven.org/maven2/net/sf/json-lib/json-lib/2.4/ | Read json |
+| commons-beanutils-1.8.3.jar | https://commons.apache.org/proper/commons-beanutils/download_beanutils.cgi | Dependency of json |
+| commons-collections.jar | https://commons.apache.org/proper/commons-collections/download_collections.cgi | Dependency of json |
+| commons-lang.jar | https://mvnrepository.com/artifact/commons-lang/commons-lang | Dependency of json |
+| commons-logging-1.2.jar |	https://commons.apache.org/logging/download_logging.cgi | Dependency of json |
+| ezmorph.jar |	https://mvnrepository.com/artifact/net.sf.ezmorph/ezmorph/1.0.6 | Dependency of json |
+| commons-io-2.6.jar | https://commons.apache.org/proper/commons-io/download_io.cgi | Read / write file |
+| guava-15.0.jar |	https://mvnrepository.com/artifact/com.google.guava/guava/15.0 | Manage collections |
+| pdfbox-2.0.17.jar |	https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox/2.0.17 | Manage pdf file |

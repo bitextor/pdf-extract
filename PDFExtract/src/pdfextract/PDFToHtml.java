@@ -5,10 +5,12 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
 
 /**
  * @author MickeyVI
@@ -57,6 +59,7 @@ public class PDFToHtml {
 	public StringBuffer extract(String inputPath, String outputPath) throws Exception {
 
 		File fTempOut = null;
+		String inputPathUnlocked = inputPath + ".unlocked";
 		try {
 			if (common.IsEmpty(outputPath)) {
 				String name = common.getName(inputPath);
@@ -68,10 +71,21 @@ public class PDFToHtml {
 			}
 
 			StringBuffer sb = new StringBuffer();
+			String sCommand[] = new String[] { "pdftohtml", "-stdout", "-s", "-i", "-noframes", "-xml", "-fontfullname",
+					inputPath, outputPath };
 
-			String sCommand[] = new String[] { "pdftohtml", "-q", "-stdout", "-s", "-i", "-noframes", "-xml",
-					"-fontfullname", inputPath, outputPath };
-			String result = executeCommand(sCommand);
+			String result = "";
+			try {
+				result = executeCommand(sCommand);
+			} catch (Exception e) {
+				String errorMsg = e.getMessage();
+				if (errorMsg.contains("Permission Error:")) {
+					decrypt(inputPath);
+					result = executeCommand(sCommand);
+				} else {
+					throw e;
+				}
+			}
 
 			// if standard output return, use standard output
 			if (!common.IsEmpty(result)) {
@@ -82,13 +96,33 @@ public class PDFToHtml {
 
 			return sb;
 		} catch (Exception e) {
-			return new StringBuffer();
+			throw e;
 		} finally {
 			if (fTempOut != null) {
 				common.deleteFile(fTempOut);
 			}
+			common.deleteFile(inputPathUnlocked);
 		}
 
+	}
+
+	private void decrypt(String file) throws IOException {
+		PDDocument document = null;
+		try {
+			InputStream keyStoreStream = null;
+			String password = "";
+			String alias = "";
+			document = PDDocument.load(new File(file), password, keyStoreStream, alias);
+			if (document.isEncrypted()) {
+				document.setAllSecurityToBeRemoved(true);
+				document.save(file);
+			}
+		} catch (Exception e) {
+		} finally {
+			if (document != null) {
+				document.close();
+			}
+		}
 	}
 
 	/**
