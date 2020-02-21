@@ -50,7 +50,7 @@ public class Common {
 		String applicationDir = getClass().getProtectionDomain().getCodeSource().getLocation().getPath();
 
 		if (applicationDir.endsWith(".jar")) {
-			String regex = "[/]([a-z0-9]+\\.jar)";
+			String regex = "[/]([^\\/]+\\.jar)";
 			Pattern p = Pattern.compile(regex, Pattern.CASE_INSENSITIVE);
 			Matcher m = p.matcher(applicationDir);
 			String jar = "";

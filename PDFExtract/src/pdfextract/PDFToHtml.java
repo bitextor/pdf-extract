@@ -71,12 +71,17 @@ public class PDFToHtml {
 			}
 
 			StringBuffer sb = new StringBuffer();
-			String sCommand[] = new String[] { "pdftohtml", "-stdout", "-s", "-i", "-noframes", "-xml", "-fontfullname",
+			String sCommand[] = new String[] { "pdftohtml", "-q", "-s", "-i", "-noframes", "-xml", "-fontfullname",
 					inputPath, outputPath };
 
 			String result = "";
 			try {
 				result = executeCommand(sCommand);
+				result = FileUtils.readFileToString(fTempOut, "UTF-8");
+				if (common.IsEmpty(result)) {
+					decrypt(inputPath);
+					result = executeCommand(sCommand);
+				}
 			} catch (Exception e) {
 				String errorMsg = e.getMessage();
 				if (errorMsg.contains("Permission Error:")) {
@@ -118,6 +123,7 @@ public class PDFToHtml {
 				document.save(file);
 			}
 		} catch (Exception e) {
+			throw e;
 		} finally {
 			if (document != null) {
 				document.close();
