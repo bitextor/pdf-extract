@@ -64,7 +64,6 @@ public class PDFExtract {
 
 	private PDFToHtml pdf = new PDFToHtml();
 	private String paraMarker = "LSMARKERLS:PARA";
-	private String defaultLang = "en";
 	private int maxWordsJoin = 5;
 
 	private Object _objectWorker = new Object();
@@ -834,7 +833,8 @@ public class PDFExtract {
 			DetectLanguage detectLang = null;
 			try {
 				detectLang = new DetectLanguage();
-			} catch (Exception e) {
+			} catch (java.lang.UnsatisfiedLinkError e) {
+				doc.warningList.add(new WarnObject("languageId", common.getStackTrace(e)));
 			}
 
 			if (detectLang == null)
@@ -909,8 +909,9 @@ public class PDFExtract {
 	 * Sentence Join
 	 */
 	private void sentenceJoin(AtomicReference<DocumentObject> refDoc) {
-
 		DocumentObject doc = refDoc.get();
+		if (common.IsEmpty(doc.language))
+			return;
 
 		try {
 
@@ -988,7 +989,6 @@ public class PDFExtract {
 	 * Final repair with the configuration rules
 	 */
 	private void finalRepair(AtomicReference<DocumentObject> refDoc) {
-
 		DocumentObject doc = refDoc.get();
 
 		try {
@@ -1011,6 +1011,9 @@ public class PDFExtract {
 						continue;
 
 					text.text = common.replaceText(repairList, text.text);
+
+					if (common.IsEmpty(text.lang))
+						continue;
 
 					langInfo = config.get(text.lang);
 					if (langInfo != null) {
@@ -1041,10 +1044,34 @@ public class PDFExtract {
 		sbOut.append("<head>\n");
 		sbOut.append("<defaultLang abbr=\"" + doc.language + "\" />\n");
 		sbOut.append("<languages>\n");
+		
+		List<String> noModel = new ArrayList<>();
 		for (LangObject lang : doc.langList) {
 			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\" />\n");
+			
+			SentenceJoin sj = _hashSentenceJoin.get(lang.name);
+			if (sj == null) {
+				noModel.add(lang.name);
+			}
+		}
+		if (noModel.size() > 0) {
+			doc.warningList.add(new WarnObject("sentenceJoin", "No model for language: " + String.join(", ", noModel) + ""));
 		}
 		sbOut.append("</languages>\n");
+		if (doc.warningList.size() > 0) {
+			sbOut.append("<warnings>" + "\n");
+			for (WarnObject warnObj : doc.warningList) {
+				sbOut.append("<warning>" + "\n");
+				sbOut.append("<method>" + warnObj.method + "</method>" + "\n");
+				sbOut.append("<detail>");
+				sbOut.append("<![CDATA[" + "");
+				sbOut.append(warnObj.detail + "");
+				sbOut.append("]]>" + "");
+				sbOut.append("</detail>" + "\n");
+				sbOut.append("</warning>" + "\n");
+			}
+			sbOut.append("</warnings>" + "\n");
+		}
 		sbOut.append("</head>\n");
 
 		// body
@@ -1209,7 +1236,7 @@ public class PDFExtract {
 	private String getMaxLangCount(HashMap<String, Integer> map) {
 
 		if (map == null || map.size() == 0) {
-			return defaultLang;
+			return "";
 		} else {
 			map = map.entrySet().stream().sorted((Map.Entry.<String, Integer>comparingByValue().reversed())).collect(
 					Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));

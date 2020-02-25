@@ -48,6 +48,7 @@ public class HTMLObject {
 		public float height = 0;
 		public String language = "";
 		public List<LangObject> langList = new ArrayList<>();
+		public List<WarnObject> warningList = new ArrayList<>();
 	}
 
 	public static class LangObject {
@@ -60,5 +61,14 @@ public class HTMLObject {
 		public float size = 0;
 		public String family = "";
 		public String color = "";
+	}
+
+	public static class WarnObject {
+		public WarnObject(String method_, String detail_) {
+			method = method_;
+			detail = detail_;
+		}
+		public String method = "";
+		public String detail = "";
 	}
 }

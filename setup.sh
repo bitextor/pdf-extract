@@ -38,7 +38,7 @@ if [ "$OS" == "" ] ; then
 
 	echo "The operating system is not supported by this script."
 
-elif [[ "$OS" == *"Debian"* && $VER+0 < 9 ]] ; then
+elif [[ "$OS" == *"Debian"* && $VER+0 -lt 9 ]] ; then
 	
 	echo "The operating system is not supported by this script."
 	echo "Debian 9 or higher is required."
@@ -54,6 +54,8 @@ elif [[ "$OS" == *"CentOS"* && $VER+0 < 7 ]] ; then
 	echo "Ubuntu 16 or higher is required."
 else
 
+	MODE=${1:-full}
+
 	echo "###"
 	echo "### $OS - $VER ###"
 	echo "###"
@@ -62,69 +64,71 @@ else
 	[ ! -d "$setupTmpDir" ] && mkdir "$setupTmpDir"
 	cd $setupTmpDir
 
-	echo "###"
-	echo "### Install prerequisite programs ###"
-	echo "###"
-	if [[ "$OS" == *"Ubuntu"* || "$OS" == *"Debian"* ]] ; then
-		apt-get update
-		apt-get install autoconf automake libtool curl make g++ unzip git ant maven poppler-utils wget -y
-
-		if [[ "$OS" == *"Ubuntu"* && $VER+0 < 18 ]] ; then
-			apt-get install apt-transport-https ca-certificates gnupg software-properties-common -y
-			wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
-			apt-add-repository 'deb https://apt.kitware.com/ubuntu/ xenial main'
+	if [ "$MODE" != "compile" ]; then
+		echo "###"
+		echo "### Install prerequisite programs ###"
+		echo "###"
+		if [[ "$OS" == *"Ubuntu"* || "$OS" == *"Debian"* ]] ; then
 			apt-get update
-		fi
-		apt-get install cmake -y
+			apt-get install autoconf automake libtool curl make g++ unzip git ant maven poppler-utils wget -y
 
-		if [[ "$OS" == *"Debian"* && $VER+0 != 9 ]] ; then
-			apt install apt-transport-https ca-certificates wget dirmngr gnupg software-properties-common -y
-			wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add -
-			add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
-			apt update
-			apt install adoptopenjdk-8-hotspot -y
-			export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64
-		else
-			if [[ "$OS" == *"Ubuntu"* && $VER+0 < 16 ]] ; then
-				yes "" | add-apt-repository ppa:openjdk-r/ppa
+			if [[ "$OS" == *"Ubuntu"* && $VER+0 < 18 ]] ; then
+				apt-get install apt-transport-https ca-certificates gnupg software-properties-common -y
+				wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc | apt-key add -
+				apt-add-repository 'deb https://apt.kitware.com/ubuntu/ xenial main'
 				apt-get update
 			fi
-			apt-get install openjdk-8-jdk -y
-			export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
-			if [[ "$OS" == *"Ubuntu"* && $VER+0 < 16 ]] ; then
-				update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+			apt-get install cmake -y
+
+			if [[ "$OS" == *"Debian"* && $VER+0 -ne 9 ]] ; then
+				apt install apt-transport-https ca-certificates wget dirmngr gnupg software-properties-common -y
+				wget -qO - https://adoptopenjdk.jfrog.io/adoptopenjdk/api/gpg/key/public | apt-key add -
+				add-apt-repository --yes https://adoptopenjdk.jfrog.io/adoptopenjdk/deb/
+				apt update
+				apt install adoptopenjdk-8-hotspot -y
+				export JAVA_HOME=/usr/lib/jvm/adoptopenjdk-8-hotspot-amd64
+			else
+				if [[ "$OS" == *"Ubuntu"* && $VER+0 < 16 ]] ; then
+					yes "" | add-apt-repository ppa:openjdk-r/ppa
+					apt-get update
+				fi
+				apt-get install openjdk-8-jdk -y
+				export JAVA_HOME=/usr/lib/jvm/java-8-openjdk-amd64
+				if [[ "$OS" == *"Ubuntu"* && $VER+0 < 16 ]] ; then
+					update-alternatives --set java /usr/lib/jvm/java-8-openjdk-amd64/jre/bin/java
+				fi
 			fi
+		elif [[ "$OS" == *"CentOS"* || "$OS" == *"Amazon Linux"* || "$OS" == *"Fedora"* ]] ; then
+			yum install epel-release -y
+			yum install autoconf automake libtool unzip gcc-c++ git ant cmake cmake3 maven poppler-utils -y
+			yum group install "Development Tools" -y
+
+			alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
+			--slave /usr/local/bin/ctest ctest /usr/bin/ctest \
+			--slave /usr/local/bin/cpack cpack /usr/bin/cpack \
+			--slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake \
+			--family cmake
+
+			alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
+			--slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
+			--slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
+			--slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
+			--family cmake
 		fi
-	elif [[ "$OS" == *"CentOS"* || "$OS" == *"Amazon Linux"* || "$OS" == *"Fedora"* ]] ; then
-		yum install epel-release -y
-		yum install autoconf automake libtool unzip gcc-c++ git ant cmake cmake3 maven poppler-utils -y
-		yum group install "Development Tools" -y
 
-		alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake 10 \
-		--slave /usr/local/bin/ctest ctest /usr/bin/ctest \
-		--slave /usr/local/bin/cpack cpack /usr/bin/cpack \
-		--slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake \
-		--family cmake
-
-		alternatives --install /usr/local/bin/cmake cmake /usr/bin/cmake3 20 \
-		--slave /usr/local/bin/ctest ctest /usr/bin/ctest3 \
-		--slave /usr/local/bin/cpack cpack /usr/bin/cpack3 \
-		--slave /usr/local/bin/ccmake ccmake /usr/bin/ccmake3 \
-		--family cmake
+		echo "###"
+		echo "### Install protobuf ###"
+		echo "###"
+		if [ -d "protobuf" ]; then rm -Rf "protobuf"; fi
+		git clone https://github.com/google/protobuf.git
+		cd protobuf
+		./autogen.sh
+		./configure
+		make
+		make install
+		ldconfig
+		cd ..
 	fi
-
-	echo "###"
-	echo "### Install protobuf ###"
-	echo "###"
-	if [ -d "protobuf" ]; then rm -Rf "protobuf"; fi
-	git clone https://github.com/google/protobuf.git
-	cd protobuf
-	./autogen.sh
-	./configure
-	make
-	make install
-	ldconfig
-	cd ..
 
 	echo "###"
 	echo "### Build cld3 java wrapper ###"
@@ -160,4 +164,3 @@ DIFF=$(( $END - $START ))
 echo "###"
 echo "### Finish, process took $DIFF seconds ###"
 echo "###"
-

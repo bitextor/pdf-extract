@@ -22,6 +22,7 @@ public class DetectLanguage {
 			identifier = new NNetLanguageIdentifierWrapper(0, 1000);
 		} catch (java.lang.UnsatisfiedLinkError e) {
 			identifier = null;
+			throw e;
 		}
 	}
 

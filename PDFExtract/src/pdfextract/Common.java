@@ -326,7 +326,7 @@ public class Common {
 				file.getParentFile().mkdirs();
 
 			FileUtils.writeStringToFile(file, content, "UTF-8", false);
-			//FileUtils.writeStringToFile(file, content);
+			// FileUtils.writeStringToFile(file, content);
 		} catch (Exception ex) {
 			throw ex;
 		}
@@ -536,6 +536,28 @@ public class Common {
 		}
 
 		return rtext;
+	}
+
+	public String getStackTrace(UnsatisfiedLinkError e2) {
+		String text = "";
+		Writer writer = null;
+		try {
+			writer = new StringWriter();
+			PrintWriter printWriter = new PrintWriter(writer);
+			e2.printStackTrace(printWriter);
+			text = writer.toString();
+		} catch (Exception e) {
+
+		} finally {
+			if (writer != null) {
+				try {
+					writer.close();
+				} catch (IOException e) {
+
+				}
+			}
+		}
+		return text;
 	}
 
 	public String getStackTrace(Exception exception) {
