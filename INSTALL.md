@@ -14,6 +14,13 @@
 
 *This will take around an hour to process.*
 
+If you don't need to install dependencies and only build PDFExtract, run:
+
+```
+	cd /word
+	bash setup.sh compile
+```
+
 - After setup finish, there will have `PDFExtract-2.0.jar` and `PDFExtract.json` in work folder.
 
 ```
