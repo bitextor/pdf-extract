@@ -1,0 +1,3 @@
+[submodule "cld3-Java"]
+	path = cld3-Java
+	url = https://github.com/xondre09/cld3-Java.git
