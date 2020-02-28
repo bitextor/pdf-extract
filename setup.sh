@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -o pipefail
 START=$(date +%s)
 
 if [ -f /etc/os-release ]; then
