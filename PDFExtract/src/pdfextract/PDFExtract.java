@@ -10,6 +10,7 @@ import pdfextract.SentenceJoin.WorkerStatus;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -29,6 +30,8 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
 import com.google.common.collect.Lists;
+import com.itextpdf.text.pdf.PdfEncryptor;
+import com.itextpdf.text.pdf.PdfReader;
 
 /**
  * @author MickeyVI
@@ -70,7 +73,7 @@ public class PDFExtract {
 	private HashMap<String, SentenceJoin> _hashSentenceJoin = new HashMap<>();
 	private Config config = null;
 
-	private void initial(String logFilePath, int verbose) throws Exception {
+	private void initial(String logFilePath, int verbose, String configFile) throws Exception {
 		common.setVerbose(verbose);
 		if (common.IsEmpty(logFilePath)) {
 			writeLogFile = false;
@@ -97,7 +100,10 @@ public class PDFExtract {
 		}
 
 		try {
-			config = new Config(common.getConfigPath());
+			if (common.IsEmpty(configFile) || !common.IsExist(configFile)) {
+				configFile = common.getConfigPath();
+			}
+			config = new Config(configFile);
 		} catch (Exception e) {
 			throw new Exception("initial failed. " + e.getMessage());
 		}
@@ -109,7 +115,16 @@ public class PDFExtract {
 	 * @throws Exception
 	 */
 	public PDFExtract() throws Exception {
-		initial("", 0);
+		initial("", 0, "");
+	}
+
+	/**
+	 * Initializes a newly created PDFExtract object.
+	 * 
+	 * @throws Exception
+	 */
+	public PDFExtract(String configFile) throws Exception {
+		initial("", 0, configFile);
 	}
 
 	/**
@@ -118,8 +133,8 @@ public class PDFExtract {
 	 * @param logFilePath The path to write the log file to.
 	 * @throws Exception
 	 */
-	public PDFExtract(String logFilePath) throws Exception {
-		initial(logFilePath, 0);
+	public PDFExtract(String logFilePath, String configFile) throws Exception {
+		initial(logFilePath, 0, configFile);
 	}
 
 	/**
@@ -129,8 +144,8 @@ public class PDFExtract {
 	 * @param verbose     Print the information to stdout (1=print, 0=silence)
 	 * @throws Exception
 	 */
-	public PDFExtract(String logFilePath, int verbose) throws Exception {
-		initial(logFilePath, verbose);
+	public PDFExtract(String logFilePath, int verbose, String configFile) throws Exception {
+		initial(logFilePath, verbose, configFile);
 	}
 
 	/**
@@ -145,7 +160,7 @@ public class PDFExtract {
 	 *                   tag after each line.
 	 *
 	 */
-	public void Extract(String inputFile, String outputFile, int keepBrTags) throws Exception {
+	public void Extract(String inputFile, String outputFile, int keepBrTags, int getPermission) throws Exception {
 
 		String outputPath = "";
 		try {
@@ -194,12 +209,20 @@ public class PDFExtract {
 			}
 
 			StringBuffer htmlBuffer = new StringBuffer("");
+			AtomicReference<DocumentObject> refDoc = new AtomicReference<DocumentObject>(new DocumentObject());
+
+			if (getPermission == 1) {
+				/**
+				 * get pdf access permission
+				 */
+				getAccessPermissions(inputFile, refDoc);
+			}
+
 			/**
 			 * Call function to convert PDF to HTML
 			 */
 			htmlBuffer = convertPdfToHtml(inputFile);
 
-			AtomicReference<DocumentObject> refDoc = new AtomicReference<DocumentObject>(new DocumentObject());
 			getHtmlObject(htmlBuffer, refDoc);
 
 			/**
@@ -225,7 +248,7 @@ public class PDFExtract {
 			/**
 			 * Call function to generate html output
 			 */
-			htmlBuffer = generateOutput(refDoc, keepBrTags);
+			htmlBuffer = generateOutput(refDoc, keepBrTags, getPermission);
 
 			/**
 			 * Write to output file.
@@ -272,7 +295,8 @@ public class PDFExtract {
 	 *
 	 * @return ByteArrayOutputStream Stream Out
 	 */
-	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, int keepBrTags) throws Exception {
+	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, int keepBrTags, int getPermission)
+			throws Exception {
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -290,13 +314,19 @@ public class PDFExtract {
 			}
 
 			StringBuffer htmlBuffer;
+			AtomicReference<DocumentObject> refDoc = new AtomicReference<DocumentObject>(new DocumentObject());
+
+			if (getPermission == 1) {
+				/**
+				 * get pdf access permission
+				 */
+				getAccessPermissions(inputStream, refDoc);
+			}
 
 			/**
 			 * Call function to paint html box
 			 */
 			htmlBuffer = convertPdfToHtml(inputStream);
-
-			AtomicReference<DocumentObject> refDoc = new AtomicReference<DocumentObject>(new DocumentObject());
 			getHtmlObject(htmlBuffer, refDoc);
 
 			/**
@@ -317,7 +347,7 @@ public class PDFExtract {
 			/**
 			 * Call function to generate html output
 			 */
-			htmlBuffer = generateOutput(refDoc, keepBrTags);
+			htmlBuffer = generateOutput(refDoc, keepBrTags, getPermission);
 
 			/**
 			 * Write output stream
@@ -368,7 +398,7 @@ public class PDFExtract {
 	 *                    tag after each line.
 	 *
 	 */
-	public void Extract(String batchFile, int threadCount, int keepBrTags) throws Exception {
+	public void Extract(String batchFile, int threadCount, int keepBrTags, int getPermission) throws Exception {
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -407,7 +437,7 @@ public class PDFExtract {
 					continue;
 				}
 
-				AddThreadExtract(ind, line, keepBrTags);
+				AddThreadExtract(ind, line, keepBrTags, getPermission);
 				ind++;
 			}
 			executor.shutdown();
@@ -436,7 +466,7 @@ public class PDFExtract {
 	/**
 	 * Add new thread pdf extract
 	 */
-	private void AddThreadExtract(int index, String line, int keepBrTags) {
+	private void AddThreadExtract(int index, String line, int keepBrTags, int getPermission) {
 		try {
 			executor.execute(new Runnable() {
 				@Override
@@ -458,7 +488,7 @@ public class PDFExtract {
 						/**
 						 * Call function to extract
 						 */
-						Extract(inputFile, outputFile, keepBrTags);
+						Extract(inputFile, outputFile, keepBrTags, getPermission);
 
 					} catch (Exception e) {
 						String message = e.getMessage();
@@ -484,6 +514,62 @@ public class PDFExtract {
 				common.print("Batch line: " + line + ", Error: " + message);
 			}
 		}
+	}
+
+	/**
+	 * Get permissions
+	 */
+	private void getAccessPermissions(String inputFile, AtomicReference<DocumentObject> refDoc) throws Exception {
+		DocumentObject doc = refDoc.get();
+		PdfReader reader = null;
+		try {
+			reader = new PdfReader(inputFile);
+			setAccessPermissions(reader, refDoc);
+			if (!doc.permission.canCopy) {
+				pdf.decrypt(reader, inputFile);
+			}
+		} catch (Exception e) {
+			throw e;
+		} finally {
+			if (reader != null) {
+				reader.close();
+				reader = null;
+			}
+		}
+	}
+
+	private void getAccessPermissions(InputStream inputStream, AtomicReference<DocumentObject> refDoc)
+			throws Exception {
+		PdfReader reader = null;
+		try {
+			reader = new PdfReader(inputStream);
+			setAccessPermissions(reader, refDoc);
+		} catch (Exception e) {
+			throw e;
+		} finally {
+			if (reader != null) {
+				reader.close();
+				reader = null;
+			}
+		}
+	}
+
+	private void setAccessPermissions(PdfReader reader, AtomicReference<DocumentObject> refDoc) {
+		DocumentObject doc = refDoc.get();
+		//
+		PdfReader.unethicalreading = true;
+		int permissions = (int) reader.getPermissions();
+		//
+		doc.permission.isEncrytped = reader.isEncrypted();
+		doc.permission.canAssembly = PdfEncryptor.isAssemblyAllowed(permissions);
+		doc.permission.canCopy = PdfEncryptor.isCopyAllowed(permissions);
+		doc.permission.canPrint = PdfEncryptor.isPrintingAllowed(permissions);
+		doc.permission.canPrintDegraded = PdfEncryptor.isDegradedPrintingAllowed(permissions);
+		doc.permission.canModified = PdfEncryptor.isModifyContentsAllowed(permissions);
+		doc.permission.canModifyAnnotations = PdfEncryptor.isModifyAnnotationsAllowed(permissions);
+		doc.permission.canFillInForm = PdfEncryptor.isFillInAllowed(permissions);
+		doc.permission.canScreenReader = PdfEncryptor.isScreenReadersAllowed(permissions);
+		doc.permission.verbose = PdfEncryptor.getPermissionsVerbose(permissions);
 	}
 
 	/**
@@ -825,15 +911,14 @@ public class PDFExtract {
 	 * Detect language + normalize text with language rules
 	 */
 	private void languageId(AtomicReference<DocumentObject> refDoc) {
-
 		DocumentObject doc = refDoc.get();
-
 		try {
-
 			DetectLanguage detectLang = null;
 			try {
 				detectLang = new DetectLanguage();
 			} catch (java.lang.UnsatisfiedLinkError e) {
+				doc.warningList.add(new WarnObject("languageId", common.getStackTrace(e)));
+			} catch (java.lang.Exception e) {
 				doc.warningList.add(new WarnObject("languageId", common.getStackTrace(e)));
 			}
 
@@ -1032,7 +1117,7 @@ public class PDFExtract {
 	/**
 	 * Generate final output with html format
 	 */
-	private StringBuffer generateOutput(AtomicReference<DocumentObject> refDoc, int keepBrTags) {
+	private StringBuffer generateOutput(AtomicReference<DocumentObject> refDoc, int keepBrTags, int getPermission) {
 
 		DocumentObject doc = refDoc.get();
 		StringBuffer sbOut = new StringBuffer();
@@ -1044,18 +1129,19 @@ public class PDFExtract {
 		sbOut.append("<head>\n");
 		sbOut.append("<defaultLang abbr=\"" + doc.language + "\" />\n");
 		sbOut.append("<languages>\n");
-		
+
 		List<String> noModel = new ArrayList<>();
 		for (LangObject lang : doc.langList) {
 			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\" />\n");
-			
+
 			SentenceJoin sj = _hashSentenceJoin.get(lang.name);
 			if (sj == null) {
 				noModel.add(lang.name);
 			}
 		}
 		if (noModel.size() > 0) {
-			doc.warningList.add(new WarnObject("sentenceJoin", "No model for language: " + String.join(", ", noModel) + ""));
+			doc.warningList
+					.add(new WarnObject("sentenceJoin", "No model for language: " + String.join(", ", noModel) + ""));
 		}
 		sbOut.append("</languages>\n");
 		if (doc.warningList.size() > 0) {
@@ -1071,6 +1157,19 @@ public class PDFExtract {
 				sbOut.append("</warning>" + "\n");
 			}
 			sbOut.append("</warnings>" + "\n");
+		}
+		if (getPermission == 1) {
+			sbOut.append("<permission isencrypted=\"" + doc.permission.isEncrytped + "\">" + "\n");
+			sbOut.append("<canassemply>" + doc.permission.canAssembly + "</canassemply>" + "\n");
+			sbOut.append("<cancopy>" + doc.permission.canCopy + "</cancopy>" + "\n");
+			sbOut.append("<canmodified>" + doc.permission.canModified + "</canmodified>" + "\n");
+			sbOut.append(
+					"<canmodifyannotations>" + doc.permission.canModifyAnnotations + "</canmodifyannotations>" + "\n");
+			sbOut.append("<canprint>" + doc.permission.canPrint + "</canprint>" + "\n");
+			sbOut.append("<canprintdegraded>" + doc.permission.canPrintDegraded + "</canprintdegraded>" + "\n");
+			sbOut.append("<canfillinform>" + doc.permission.canFillInForm + "</canfillinform>" + "\n");
+			sbOut.append("<canscreenreader>" + doc.permission.canScreenReader + "</canscreenreader>" + "\n");
+			sbOut.append("</permission>" + "\n");
 		}
 		sbOut.append("</head>\n");
 

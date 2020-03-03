@@ -131,15 +131,18 @@ The command-line PDFExtract is contained in the PDFExtract.jar package that may 
 For extracting a PDF file to the alignment optimized HTML file type:
 
 ```sh
-java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -T [<number_threads>] --keepbrtags
+java -jar PDFExtract.jar -I <input_file> -O <output_file> -B <batch_file> -L [<log_path>] -T [<number_threads>] --keepbrtags --getperms -C [<config_file>]
 ```
 *Arguments*
 - `-I <input_file>` specifies the path to the source PDF file process for extraction. 
 - `-O <output_file>` specifies the path to the output HTML file after extraction. 
 - `-B <batch_file>` specifies the path to the batch file for processing list of files. The input file and output file are specified on the same line delimited by a tab. Each line is delimited by a new line character.
-- `-L <log_path>` specifies the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specifed location for additional processing. If not specified, then the log file will write to stdout.
+- `-L <log_path>` specifies the path to write the log file to. As it is common for PDF files to have issues when processing such as being password protected or other forms of restricted permissions, the log file can be written to a specified location for additional processing. If not specified, then the log file will write to stdout.
 - `-T <number_threads>` specifies the number of threads to run concurrently when processing PDF files. One file can be processed per thread. If not specified, then the default valur of 1 thread is used.
-- `--keepbrtags` By default &lt;br /&gt; is not included in the output. When this argument is specified, then the output will include the &lt;br /&gt; tag after each line.
+- `--keepbrtags` by default &lt;br /&gt; is not included in the output. When this argument is specified, then the output will include the &lt;br /&gt; tag after each line.
+- `--getperms` by default the permissions is not included in the output. When this argument is specified, then the output will include permissions tag into header section.
+- `-C <config_file>` specifies a json configuration file. If not specify, then the file `PDFExtract.json` in the same folder as the `PDFExtract.jar` file will be used.
+
 
 **Example:**
 

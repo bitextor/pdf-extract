@@ -49,6 +49,7 @@ public class HTMLObject {
 		public String language = "";
 		public List<LangObject> langList = new ArrayList<>();
 		public List<WarnObject> warningList = new ArrayList<>();
+		public AccessPermission permission = new AccessPermission();
 	}
 
 	public static class LangObject {
@@ -68,7 +69,21 @@ public class HTMLObject {
 			method = method_;
 			detail = detail_;
 		}
+
 		public String method = "";
 		public String detail = "";
+	}
+
+	public static class AccessPermission {
+		public boolean isEncrytped = false;
+		public boolean canAssembly = false;
+		public boolean canCopy = false;
+		public boolean canPrint = false;
+		public boolean canPrintDegraded = false;
+		public boolean canModified = false;
+		public boolean canModifyAnnotations = false;
+		public boolean canFillInForm = false;
+		public boolean canScreenReader = false;
+		public String verbose = "";
 	}
 }

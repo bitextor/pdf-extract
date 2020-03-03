@@ -7,10 +7,14 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.util.UUID;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.pdfbox.pdmodel.PDDocument;
+
+import com.itextpdf.text.pdf.PdfEncryptor;
+import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.PdfWriter;
 
 /**
  * @author MickeyVI
@@ -71,33 +75,22 @@ public class PDFToHtml {
 			}
 
 			StringBuffer sb = new StringBuffer();
-			String sCommand[] = new String[] { "pdftohtml", "-q", "-s", "-i", "-noframes", "-xml", "-fontfullname",
-					inputPath, outputPath };
+			String sCommand[] = new String[] { "pdftohtml", "-s", "-i", "-noframes", "-xml", "-fontfullname", inputPath,
+					outputPath };
 
-			String result = "";
 			try {
-				result = executeCommand(sCommand);
-				result = FileUtils.readFileToString(fTempOut, "UTF-8");
-				if (common.IsEmpty(result)) {
-					decrypt(inputPath);
-					result = executeCommand(sCommand);
-				}
+				executeCommand(sCommand);
 			} catch (Exception e) {
 				String errorMsg = e.getMessage();
 				if (errorMsg.contains("Permission Error:")) {
 					decrypt(inputPath);
-					result = executeCommand(sCommand);
+					executeCommand(sCommand);
 				} else {
 					throw e;
 				}
 			}
 
-			// if standard output return, use standard output
-			if (!common.IsEmpty(result)) {
-				sb.append(result);
-			} else {
-				sb.append(FileUtils.readFileToString(fTempOut, "UTF-8"));
-			}
+			sb.append(FileUtils.readFileToString(fTempOut, "UTF-8"));
 
 			return sb;
 		} catch (Exception e) {
@@ -108,27 +101,43 @@ public class PDFToHtml {
 			}
 			common.deleteFile(inputPathUnlocked);
 		}
-
 	}
 
-	private void decrypt(String file) throws IOException {
-		PDDocument document = null;
+	public void decrypt(String file) throws IOException {
+		decrypt(null, file);
+	}
+
+	public void decrypt(PdfReader reader, String file) throws IOException {
+		File fTemp = null;
 		try {
-			InputStream keyStoreStream = null;
-			String password = "";
-			String alias = "";
-			document = PDDocument.load(new File(file), password, keyStoreStream, alias);
-			if (document.isEncrypted()) {
-				document.setAllSecurityToBeRemoved(true);
-				document.save(file);
+
+			if (reader == null) {
+				reader = new PdfReader(file);
+				PdfReader.unethicalreading = true;
 			}
+
+			fTemp = File.createTempFile(new File(file).getName(), ".unlocked");
+			fTemp.deleteOnExit();
+
+			String inputPathUnlocked = fTemp.getPath();
+			PdfEncryptor.encrypt(reader, new FileOutputStream(inputPathUnlocked), null, null,
+					PdfWriter.ALLOW_ASSEMBLY | PdfWriter.ALLOW_COPY | PdfWriter.ALLOW_DEGRADED_PRINTING
+							| PdfWriter.ALLOW_FILL_IN | PdfWriter.ALLOW_MODIFY_ANNOTATIONS
+							| PdfWriter.ALLOW_MODIFY_CONTENTS | PdfWriter.ALLOW_PRINTING
+							| PdfWriter.ALLOW_SCREENREADERS,
+					false);
+
+			common.moveFile(fTemp.getPath(), file);
 		} catch (Exception e) {
-			throw e;
 		} finally {
-			if (document != null) {
-				document.close();
+			if (reader != null) {
+				reader.close();
+				reader = null;
 			}
+			if (fTemp != null)
+				common.deleteFile(fTemp);
 		}
+
 	}
 
 	/**

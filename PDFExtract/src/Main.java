@@ -22,7 +22,7 @@ public class Main {
 			}
 
 			String input = "", output = "", batchfile = "", logpath = "", threadcount = "", verbose = "",
-					keepbrtags = "";
+					keepbrtags = "", getperms = "", configfile = "";
 			String key = "";
 
 			/**
@@ -34,6 +34,9 @@ public class Main {
 					key = parm.substring(2);
 					if (key.equals("keepbrtags")) {
 						keepbrtags = "1";
+						key = "";
+					} else if (key.equals("getperms")) {
+						getperms = "1";
 						key = "";
 					}
 				} else if (parm.startsWith("-")) {
@@ -53,6 +56,8 @@ public class Main {
 						logpath = parm;
 					} else if (key.equals("T")) {
 						threadcount = parm;
+					} else if (key.equals("C")) {
+						configfile = parm;
 					}
 					key = "";
 				}
@@ -64,8 +69,8 @@ public class Main {
 				 * Call function to extract single PDF file
 				 */
 				try {
-					oExtractor = new PDFExtract(logpath, common.getInt(verbose));
-					oExtractor.Extract(input, output, common.getInt(keepbrtags));
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile);
+					oExtractor.Extract(input, output, common.getInt(keepbrtags), common.getInt(getperms));
 				} catch (Exception e) {
 					common.print("File: " + input + ", " + e.getMessage());
 				}
@@ -75,8 +80,9 @@ public class Main {
 				 * Call function to extract PDF with batch file
 				 */
 				try {
-					oExtractor = new PDFExtract(logpath, common.getInt(verbose));
-					oExtractor.Extract(batchfile, common.getInt(threadcount), common.getInt(keepbrtags));
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile);
+					oExtractor.Extract(batchfile, common.getInt(threadcount), common.getInt(keepbrtags),
+							common.getInt(getperms));
 				} catch (Exception e) {
 					common.print("File: " + batchfile + ", " + e.getMessage());
 				}
