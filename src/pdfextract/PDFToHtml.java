@@ -91,7 +91,7 @@ public class PDFToHtml {
 			}
 
 			sb.append(FileUtils.readFileToString(fTempOut, "UTF-8"));
-			
+
 			return sb;
 		} catch (Exception e) {
 			throw e;
@@ -135,9 +135,9 @@ public class PDFToHtml {
 				reader = null;
 			}
 			if (fTemp != null)
-				common.deleteFile(fTemp);			
+				common.deleteFile(fTemp);
 		}
-		
+
 	}
 
 	/**

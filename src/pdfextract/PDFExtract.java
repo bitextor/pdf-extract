@@ -217,12 +217,12 @@ public class PDFExtract {
 				 */
 				getAccessPermissions(inputFile, refDoc);
 			}
-			
+
 			/**
 			 * Call function to convert PDF to HTML
 			 */
 			htmlBuffer = convertPdfToHtml(inputFile);
-			
+
 			getHtmlObject(htmlBuffer, refDoc);
 
 			/**
@@ -321,7 +321,7 @@ public class PDFExtract {
 				 * get pdf access permission
 				 */
 				getAccessPermissions(inputStream, refDoc);
-			}			
+			}
 
 			/**
 			 * Call function to paint html box
@@ -572,6 +572,62 @@ public class PDFExtract {
 		doc.permission.verbose = PdfEncryptor.getPermissionsVerbose(permissions);
 	}
 	
+	/**
+	 * Get permissions
+	 */
+	private void getAccessPermissions(String inputFile, AtomicReference<DocumentObject> refDoc) throws Exception {
+		DocumentObject doc = refDoc.get();
+		PdfReader reader = null;
+		try {
+			reader = new PdfReader(inputFile);
+			setAccessPermissions(reader, refDoc);
+			if (!doc.permission.canCopy) {
+				pdf.decrypt(reader, inputFile);
+			}
+		} catch (Exception e) {
+			throw e;
+		} finally {
+			if (reader != null) {
+				reader.close();
+				reader = null;
+			}
+		}
+	}
+
+	private void getAccessPermissions(InputStream inputStream, AtomicReference<DocumentObject> refDoc)
+			throws Exception {
+		PdfReader reader = null;
+		try {
+			reader = new PdfReader(inputStream);
+			setAccessPermissions(reader, refDoc);
+		} catch (Exception e) {
+			throw e;
+		} finally {
+			if (reader != null) {
+				reader.close();
+				reader = null;
+			}
+		}
+	}
+
+	private void setAccessPermissions(PdfReader reader, AtomicReference<DocumentObject> refDoc) {
+		DocumentObject doc = refDoc.get();
+		//
+		PdfReader.unethicalreading = true;
+		int permissions = (int) reader.getPermissions();
+		//
+		doc.permission.isEncrytped = reader.isEncrypted();
+		doc.permission.canAssembly = PdfEncryptor.isAssemblyAllowed(permissions);
+		doc.permission.canCopy = PdfEncryptor.isCopyAllowed(permissions);
+		doc.permission.canPrint = PdfEncryptor.isPrintingAllowed(permissions);
+		doc.permission.canPrintDegraded = PdfEncryptor.isDegradedPrintingAllowed(permissions);
+		doc.permission.canModified = PdfEncryptor.isModifyContentsAllowed(permissions);
+		doc.permission.canModifyAnnotations = PdfEncryptor.isModifyAnnotationsAllowed(permissions);
+		doc.permission.canFillInForm = PdfEncryptor.isFillInAllowed(permissions);
+		doc.permission.canScreenReader = PdfEncryptor.isScreenReadersAllowed(permissions);
+		doc.permission.verbose = PdfEncryptor.getPermissionsVerbose(permissions);
+	}
+
 	/**
 	 * Convert PDF to HTML file
 	 */
@@ -919,7 +975,7 @@ public class PDFExtract {
 			} catch (java.lang.UnsatisfiedLinkError e) {
 				doc.warningList.add(new WarnObject("languageId", common.getStackTrace(e)));
 			} catch (java.lang.Exception e) {
-				doc.warningList.add(new WarnObject("languageId", common.getStackTrace(e)));				
+				doc.warningList.add(new WarnObject("languageId", common.getStackTrace(e)));
 			}
 
 			if (detectLang == null)
@@ -1170,7 +1226,7 @@ public class PDFExtract {
 			sbOut.append("<canfillinform>" + doc.permission.canFillInForm + "</canfillinform>" + "\n");
 			sbOut.append("<canscreenreader>" + doc.permission.canScreenReader + "</canscreenreader>" + "\n");
 			sbOut.append("</permission>" + "\n");
-		}		
+		}
 		sbOut.append("</head>\n");
 
 		// body
