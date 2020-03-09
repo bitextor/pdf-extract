@@ -1,1 +1,1 @@
-java -jar PDFExtract.jar -I "pdf-in/sample.pdf" -O "html-out/sample.html" -LANG "en"
+java -jar ../target/PDFExtract-2.0.jar -I "pdf-in/sample.pdf" -O "html-out/sample.html" -LANG "en"

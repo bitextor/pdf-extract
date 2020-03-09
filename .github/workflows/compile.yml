@@ -1,0 +1,32 @@
+name: Compile and Test
+
+on: [push, pull_request]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: sudo apt-get install protobuf-compiler libprotobuf-dev poppler-utils
+    - uses: actions/checkout@v2
+    - name: Checkout submodules
+      run: git submodule update --init --force --recursive
+    - name: Set up JDK
+      uses: actions/setup-java@v1
+      with:
+        java-version: 13
+    - name: Compile submodules
+      working-directory: ./cld3-Java
+      run: |
+        ant jar
+        mvn install:install-file -Dfile=cld3-java.jar -DgroupId=cld3-java -DartifactId=cld3-java -Dversion=1.0 -Dpackaging=jar
+    - name: Build PDF Extract
+      run: mvn package
+    - name: Run Single Tests
+      working-directory: ./Test
+      run: time sh run-single.sh
+    - name: Run Batch Tests
+      working-directory: ./Test
+      run: time sh run-batch.sh
