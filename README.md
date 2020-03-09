@@ -351,3 +351,4 @@ Yes. By default the HTML output is not in a format that will render well in a br
 ### Can this tool extract text from images embedded in PDF files?
 No. This tool processes only text. It is not an OCR tool, it is only able to extract text from PDF if the data is already in text format.
 
+
