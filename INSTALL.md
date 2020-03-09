@@ -1,36 +1,72 @@
 # PDFExtract Installation
 
-1. Download / Close the project from Github
-   1. Go into directory that you want to clone the repository to and execute the `git clone` command.
-```sh
-cd /gitproject
-git clone https://github.com/dionwiggins/pdfextract.git
+- Download setup script to `work` directory: [setup.sh](setup.sh)
+
+*Support for Ubuntu >= 16.04 or CentOS >= 7 or Debian >= 9*
+	
+
+- Go into `work` directory then execute setup script.
+
 ```
-   2. A project folder will be created `/gitproject/pdf-extract` with the project files
-   3. You can now run the binary in the `/gitproject/pdf-extract/runnable-jar` using the instructions in [README.md](#command-line-pdf-extraction)
+	cd /work
+	bash setup.sh
+```
 
-2. Developers
-   1. Import the projects into Eclipse (for develper
-   2. In Eclipse, go to File > Import > General and select Existing Projects into Eclipse.
-   3. Next to “Select root directory,” browse to the cloned repository on your computer where you downloaded all the files from Github. Then select Open and browse to `/gitproject/pdfextract/PDFExtract`.
+*This will take around an hour to process.*
 
-# Dependancies
-All dependancies are included in the project folder.
+If you don't need to install dependencies and only build PDFExtract, run:
+
+```
+	cd /word
+	bash setup.sh compile
+```
+
+- After setup finish, there will have `PDFExtract-2.0.jar` and `PDFExtract.json` in work folder.
+
+```
+	ls -l
+	- PDFExtract-2.0.jar
+	- PDFExtract.json
+```
+
+- You can now run the PDFExtract-2.0.jar via command line using the instructions in [README.md](README.md)
+
+- PDFExtract project is now in `/work/setup-tmp/pdf-extract/PDFExtract` directory.
+
+- And java library for PDFExtract in `/work/setup-tmp/pdf-extract/PDFExtract/target/`.
+
+
+## Setup.sh
+
+Here is the steps to install in setup script:
+
+
+1. Install prerequisite programs
+
+2. Install protobuf
+
+3. Build cld3 java wrapper
+
+4. Install cld3-java.jar in maven repository
+
+5. Build PDFExtract
+
+
+# Dependencies
+All dependencies are included in the project folder.
 
 
 | Library | URL| Description |
 | --- | --- | --- |
-| commons-io-2.4.jar | https://commons.apache.org/proper/commons-io/download_io.cgi | Read / write file |
-| pdfbox-2.0.0.jar | https://pdfbox.apache.org/download.cgi | Convert PDF to HTML |
-| pdf2dom-1.7.jar	| https://mvnrepository.com/artifact/net.sf.cssbox/pdf2dom/1.7 | Convert PDF to HTML |
-|  fontbox-2.0.0.jar |	https://pdfbox.apache.org/download.cgi | Dependency of pdfbox |
-| FontVerter-1.2.19.jar |	https://mvnrepository.com/artifact/net.mabboud.fontverter/FontVerter/1.2.19 | Dependency of pdfbox |
-| commons-lang3-3.4.jar |	https://commons.apache.org/lang/download_lang.cgi | Dependency of pdfbox |
-| commons-logging-1.2.jar |	https://commons.apache.org/logging/download_logging.cgi | Dependency of pdfbox |
-| guava-15.0.jar |	https://mvnrepository.com/artifact/com.google.guava/guava/15.0 | Dependency of pdfbox |
-| javassist-3.18.2-GA.jar |	https://mvnrepository.com/artifact/org.javassist/javassist/3.18.2-GA | Dependency of pdfbox |
-| ch.qos.logback.classic-0.9.28.jar |	https://logback.qos.ch/download.html | Dependency of pdfbox |
-| ch.qos.logback.core-0.9.28.jar | https://logback.qos.ch/download.html | Dependency of pdfbox |
-| slf4j-api-1.6.1.jar |	https://www.slf4j.org/download.html | Dependency of pdfbox |
-| reflections-0.9.9.jar |	https://mvnrepository.com/artifact/org.reflections/reflections/0.9.9-RC1 | Dependency of pdfbox |
-| bcprov-jdk16-1.45.jar |	https://mvnrepository.com/artifact/org.bouncycastle/bcprov-jdk16/1.45 | Dependency of pdfbox |
+| cld3-java.jar | https://github.com/xondre09/cld3-Java | Java wrapper for cld3 |
+| json-lib-2.4-jdk15.jar |	https://mvnrepository.com/artifact/net.sf.json-lib/json-lib/2.4 | Read json |
+| commons-beanutils-1.8.3.jar | https://mvnrepository.com/artifact/commons-beanutils/commons-beanutils/1.8.3 | Dependency of json |
+| commons-collections.jar | https://mvnrepository.com/artifact/commons-collections/commons-collections/3.2 | Dependency of json |
+| commons-lang.jar | https://mvnrepository.com/artifact/commons-lang/commons-lang/2.1 | Dependency of json |
+| commons-logging-1.2.jar |	https://mvnrepository.com/artifact/commons-logging/commons-logging/1.2 | Dependency of json |
+| ezmorph.jar |	https://mvnrepository.com/artifact/net.sf.ezmorph/ezmorph/1.0.6 | Dependency of json |
+| commons-io-2.6.jar | https://mvnrepository.com/artifact/commons-io/commons-io/2.6 | Read / write file |
+| guava-15.0.jar |	https://mvnrepository.com/artifact/com.google.guava/guava/15.0 | Manage collections |
+| pdfbox-2.0.17.jar |	https://mvnrepository.com/artifact/org.apache.pdfbox/pdfbox/2.0.17 | Manage pdf file |
+
+
