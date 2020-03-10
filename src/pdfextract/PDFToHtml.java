@@ -5,9 +5,9 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -22,6 +22,12 @@ import com.itextpdf.text.pdf.PdfWriter;
 public class PDFToHtml {
 
 	Common common = new Common();
+	private long timeout = 600;
+
+	public PDFToHtml(long timeout_) {
+		if (timeout_ > 0)
+			timeout = timeout_;
+	}
 
 	/**
 	 * Extract pdf stream to html
@@ -63,7 +69,6 @@ public class PDFToHtml {
 	public StringBuffer extract(String inputPath, String outputPath) throws Exception {
 
 		File fTempOut = null;
-		String inputPathUnlocked = inputPath + ".unlocked";
 		try {
 			if (common.IsEmpty(outputPath)) {
 				String name = common.getName(inputPath);
@@ -99,7 +104,7 @@ public class PDFToHtml {
 			if (fTempOut != null) {
 				common.deleteFile(fTempOut);
 			}
-			common.deleteFile(inputPathUnlocked);
+			common.deleteFile(outputPath);
 		}
 	}
 
@@ -146,10 +151,17 @@ public class PDFToHtml {
 	private String executeCommand(String... command) throws Exception {
 
 		Process proc = null;
+		boolean bTimeout = false;
 		try {
 			StringBuilder sb = new StringBuilder("");
 
 			proc = Runtime.getRuntime().exec(command);
+
+			if (!proc.waitFor(timeout, TimeUnit.SECONDS)) {
+				// timeout - kill the process.
+				bTimeout = true;
+				proc.destroyForcibly();
+			}
 
 			// Read result
 			BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
@@ -174,7 +186,12 @@ public class PDFToHtml {
 				throw new Exception(sbError.toString());
 			}
 		} catch (IOException e) {
-			throw e;
+			if (bTimeout) {
+				throw new TimeoutException(
+						"Timed out waiting for poppler extract pdf reach. (" + timeout + " seconds)");
+			} else {
+				throw e;
+			}
 		} catch (InterruptedException e) {
 			throw e;
 		} finally {
