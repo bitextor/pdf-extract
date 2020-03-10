@@ -8,23 +8,23 @@
 - Go into `work` directory then execute setup script.
 
 ```
-	cd /work
-	bash setup.sh
+apt-get update
+apt-get install build-essential git ant maven protobuf-compiler libprotobuf-dev cmake poppler-utils openjdk-8-jdk
+
+git clone https://github.com/bitextor/pdf-extract.git --recursive
+
+cd pdf-extract
+cd cld3-Java
+ant jar
+mvn install:install-file -Dfile=cld3-java.jar -DgroupId=cld3-java -DartifactId=cld3-java -Dversion=1.0 -Dpackaging=jar
+cd ..
+mvn package
 ```
 
-*This will take around an hour to process.*
-
-If you don't need to install dependencies and only build PDFExtract, run:
+- After setup finish, there will have `PDFExtract-2.0.jar` and `PDFExtract.json` in `target` folder.
 
 ```
-	cd /word
-	bash setup.sh compile
-```
-
-- After setup finish, there will have `PDFExtract-2.0.jar` and `PDFExtract.json` in work folder.
-
-```
-	ls -l
+	ls -l target/
 	- PDFExtract-2.0.jar
 	- PDFExtract.json
 ```
@@ -36,21 +36,8 @@ If you don't need to install dependencies and only build PDFExtract, run:
 - And java library for PDFExtract in `/work/setup-tmp/pdf-extract/PDFExtract/target/`.
 
 
-## Setup.sh
-
-Here is the steps to install in setup script:
-
-
-1. Install prerequisite programs
-
-2. Install protobuf
-
-3. Build cld3 java wrapper
-
-4. Install cld3-java.jar in maven repository
-
-5. Build PDFExtract
-
+## Protobuf installation issues
+If using your distribution packages for `libprotobuf` is not enough to compile `cld3`, please, install it manually (you can follow `bitextor` instructions: https://github.com/bitextor/bitextor#language-detector)
 
 # Dependencies
 All dependencies are included in the project folder.
