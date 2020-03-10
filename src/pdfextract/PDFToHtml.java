@@ -69,7 +69,6 @@ public class PDFToHtml {
 	public StringBuffer extract(String inputPath, String outputPath) throws Exception {
 
 		File fTempOut = null;
-		String inputPathUnlocked = inputPath + ".unlocked";
 		try {
 			if (common.IsEmpty(outputPath)) {
 				String name = common.getName(inputPath);
@@ -105,7 +104,7 @@ public class PDFToHtml {
 			if (fTempOut != null) {
 				common.deleteFile(fTempOut);
 			}
-			common.deleteFile(inputPathUnlocked);
+			common.deleteFile(outputPath);
 		}
 	}
 
