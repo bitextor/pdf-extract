@@ -65,7 +65,7 @@ public class PDFExtract {
 	private Common common = new Common();
 	private ExecutorService executor;
 
-	private PDFToHtml pdf = new PDFToHtml();
+	private PDFToHtml pdf = null;
 	private String paraMarker = "LSMARKERLS:PARA";
 	private int maxWordsJoin = 5;
 
@@ -73,7 +73,7 @@ public class PDFExtract {
 	private HashMap<String, SentenceJoin> _hashSentenceJoin = new HashMap<>();
 	private Config config = null;
 
-	private void initial(String logFilePath, int verbose, String configFile) throws Exception {
+	private void initial(String logFilePath, int verbose, String configFile, long timeout) throws Exception {
 		common.setVerbose(verbose);
 		if (common.IsEmpty(logFilePath)) {
 			writeLogFile = false;
@@ -107,6 +107,9 @@ public class PDFExtract {
 		} catch (Exception e) {
 			throw new Exception("initial failed. " + e.getMessage());
 		}
+
+		pdf = new PDFToHtml(timeout);
+
 	}
 
 	/**
@@ -115,26 +118,50 @@ public class PDFExtract {
 	 * @throws Exception
 	 */
 	public PDFExtract() throws Exception {
-		initial("", 0, "");
+		initial("", 0, "", 0);
 	}
 
 	/**
 	 * Initializes a newly created PDFExtract object.
 	 * 
+	 * @param configFile The path for configuration file
 	 * @throws Exception
 	 */
 	public PDFExtract(String configFile) throws Exception {
-		initial("", 0, configFile);
+		initial("", 0, configFile, 0);
+	}
+
+	/**
+	 * Initializes a newly created PDFExtract object.
+	 * 
+	 * @param timeout The maximum time wait in seconds for poppler extract
+	 * @throws Exception
+	 */
+	public PDFExtract(long timeout) throws Exception {
+		initial("", 0, "", timeout);
+	}
+
+	/**
+	 * Initializes a newly created PDFExtract object.
+	 * 
+	 * @param configFile The path for configuration file
+	 * @param timeout    The maximum time wait in seconds for poppler extract
+	 * @throws Exception
+	 */
+	public PDFExtract(String configFile, long timeout) throws Exception {
+		initial("", 0, configFile, timeout);
 	}
 
 	/**
 	 * Initializes a newly created PDFExtract object.
 	 * 
 	 * @param logFilePath The path to write the log file to.
+	 * @param configFile  The path for configuration file
+	 * @param timeout     The maximum time wait in seconds for poppler extract
 	 * @throws Exception
 	 */
-	public PDFExtract(String logFilePath, String configFile) throws Exception {
-		initial(logFilePath, 0, configFile);
+	public PDFExtract(String logFilePath, String configFile, long timeout) throws Exception {
+		initial(logFilePath, 0, configFile, timeout);
 	}
 
 	/**
@@ -142,23 +169,27 @@ public class PDFExtract {
 	 * 
 	 * @param logFilePath The path to write the log file to.
 	 * @param verbose     Print the information to stdout (1=print, 0=silence)
+	 * @param configFile  The path for configuration file
+	 * @param timeout     The maximum time wait in seconds for poppler extract
 	 * @throws Exception
 	 */
-	public PDFExtract(String logFilePath, int verbose, String configFile) throws Exception {
-		initial(logFilePath, verbose, configFile);
+	public PDFExtract(String logFilePath, int verbose, String configFile, long timeout) throws Exception {
+		initial(logFilePath, verbose, configFile, timeout);
 	}
 
 	/**
 	 * PDFExtract is a PDF parser that converts and extracts PDF content into a HTML
 	 * format that is optimized for easy alignment across multiple language sources.
 	 *
-	 * @param inputFile  The path to the source PDF file process for extraction
-	 * @param outputFile The path to the output HTML file after extraction
-	 * @param keepBrTags By default <br />
-	 *                   is not included in the output. When this argument is
-	 *                   specified, then the output will include the <br />
-	 *                   tag after each line.
-	 *
+	 * @param inputFile     The path to the source PDF file process for extraction
+	 * @param outputFile    The path to the output HTML file after extraction
+	 * @param keepBrTags    By default <br />
+	 *                      is not included in the output. When this argument is
+	 *                      specified, then the output will include the <br />
+	 *                      tag after each line.
+	 * @param getPermission By default the permissions is not included in the
+	 *                      output. When this argument is specified, then the output
+	 *                      will include permissions tag into header section.
 	 */
 	public void Extract(String inputFile, String outputFile, int keepBrTags, int getPermission) throws Exception {
 

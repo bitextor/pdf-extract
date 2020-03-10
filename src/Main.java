@@ -22,7 +22,7 @@ public class Main {
 			}
 
 			String input = "", output = "", batchfile = "", logpath = "", threadcount = "", verbose = "",
-					keepbrtags = "", getperms = "", configfile = "";
+					keepbrtags = "", getperms = "", configfile = "", timeout = "";
 			String key = "";
 
 			/**
@@ -58,6 +58,8 @@ public class Main {
 						threadcount = parm;
 					} else if (key.equals("C")) {
 						configfile = parm;
+					} else if (key.equals("t")) {
+						timeout = parm;
 					}
 					key = "";
 				}
@@ -69,7 +71,7 @@ public class Main {
 				 * Call function to extract single PDF file
 				 */
 				try {
-					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile);
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile, common.getLong(timeout));
 					oExtractor.Extract(input, output, common.getInt(keepbrtags), common.getInt(getperms));
 				} catch (Exception e) {
 					common.print("File: " + input + ", " + e.getMessage());
@@ -80,7 +82,7 @@ public class Main {
 				 * Call function to extract PDF with batch file
 				 */
 				try {
-					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile);
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile, common.getLong(timeout));
 					oExtractor.Extract(batchfile, common.getInt(threadcount), common.getInt(keepbrtags),
 							common.getInt(getperms));
 				} catch (Exception e) {
