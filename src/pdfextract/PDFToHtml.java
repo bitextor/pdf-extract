@@ -22,7 +22,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 public class PDFToHtml {
 
 	Common common = new Common();
-	private long timeout = 30;
+	private long timeout = 600;
 
 	public PDFToHtml(long timeout_) {
 		if (timeout_ > 0)
