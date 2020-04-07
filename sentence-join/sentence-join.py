@@ -163,7 +163,7 @@ def tune_threshold(tune_file):
 
 def runtime_scoring():
   for line in sys.stdin:
-    #print(line.rstrip())
+    ##print(line.rstrip())
     try:
       (left_sentence,right_sentence) = line.rstrip().split("\t")
     except:

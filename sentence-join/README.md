@@ -20,3 +20,4 @@ Output is prediction if they should be joined
 
 > This is a test <TAB> and this is a test
 > ===> False
+
