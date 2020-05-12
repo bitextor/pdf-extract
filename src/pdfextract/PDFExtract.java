@@ -58,8 +58,8 @@ public class PDFExtract {
 	private Pattern patternSize = Pattern.compile(".*size=\"([0-9]+)\".*");
 	private Pattern patternFamily = Pattern.compile(".*family=\"([^\"]+)\".*");
 	private Pattern patternColor = Pattern.compile(".*color=\"(#[a-z0-9]+)\".*");
-	private Pattern patternBold = Pattern.compile("<b>([^<]*)<\\/b>");
-	private Pattern patternLink = Pattern.compile("<a ?[^>]*>([^<]*)<\\/a>");
+	// #41: Change Link Pattern.
+	private Pattern patternLink = Pattern.compile(".*<a ?[^>]*>(.+?)<\\/a>.*");
 	private Pattern patternWord = Pattern.compile("<text [^>]*>(.*?)<\\/text>");
 
 	private Common common = new Common();
@@ -789,6 +789,10 @@ public class PDFExtract {
 									text.top = nextText.top;
 								if (nextText.bottom > text.bottom)
 									text.bottom = nextText.bottom;
+								// Change font if nextext is larger than text.
+								if (nextText.text.length() > text.text.length()) {
+									text.fontfamily = nextText.fontfamily;
+								}
 								text.right = nextText.right;
 								text.width = text.right - text.left;
 								text.height = text.bottom - text.top;
@@ -834,7 +838,12 @@ public class PDFExtract {
 								newTexts.add(getNewText(paraMarker));
 							} else if (isTooFar(text, nextText) || isFontChanged(text, nextText)) {
 								newTexts.add(getNewText(paraMarker));
-							}
+							}// Separate paragraph if font style is difference.
+							else if (!text.fontfamily.equals(nextText.fontfamily) 
+									&& text.text.length() > 6 
+									&& nextText.text.length() > 6) {
+								newTexts.add(getNewText(paraMarker));
+							}							
 							break;
 						}
 					} else {
@@ -1295,9 +1304,6 @@ public class PDFExtract {
 
 		String text = obj.text;
 
-		if (patternBold.matcher(text).matches()) {
-			obj.fontweight = "bold";
-		}
 		if (patternLink.matcher(text).matches()) {
 			obj.islink = true;
 		}
@@ -1353,10 +1359,17 @@ public class PDFExtract {
 		if (map == null || map.size() == 0) {
 			return 0f;
 		} else {
-			map = map.entrySet().stream().sorted((Map.Entry.<Float, Integer>comparingByValue().reversed())).collect(
-					Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-			return map.entrySet().iterator().next().getKey();
+			// #37, Fix to remove sorting for getting max
+			Map.Entry<Float, Integer> maxEntry = null;
+			for (Map.Entry<Float, Integer> entry : map.entrySet())
+			{
+			    if (maxEntry == null || entry.getValue().compareTo(maxEntry.getValue()) > 0)
+			    {
+			        maxEntry = entry;
+			    }
+			}
+			
+			return maxEntry.getKey();
 		}
 	}
 
@@ -1368,10 +1381,17 @@ public class PDFExtract {
 		if (map == null || map.size() == 0) {
 			return "";
 		} else {
-			map = map.entrySet().stream().sorted((Map.Entry.<String, Integer>comparingByValue().reversed())).collect(
-					Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
-
-			return map.entrySet().iterator().next().getKey();
+			// #37, Fix to remove sorting for getting max
+			Map.Entry<String, Integer>  maxEntry = null;
+			for (Map.Entry<String, Integer>  entry : map.entrySet())
+			{
+			    if (maxEntry == null || entry.getValue().compareTo(maxEntry.getValue()) > 0)
+			    {
+			        maxEntry = entry;
+			    }
+			}
+			
+			return maxEntry.getKey();
 		}
 	}
 
@@ -1545,8 +1565,9 @@ public class PDFExtract {
 						_hashSentenceJoin.put(lang, sj);
 					}
 				}
-
-				if (sj != null && sj.status() != WorkerStatus.RUNNING && sj.status() != WorkerStatus.LOADING) {
+				
+				// Fix Issue #35 to prevent call start() multiple time in one language id.
+				if (sj != null && sj.status() != WorkerStatus.RUNNING && sj.status() != WorkerStatus.LOADING && sj.status() != WorkerStatus.ERROR) {
 					sj.start();
 				}
 			}
