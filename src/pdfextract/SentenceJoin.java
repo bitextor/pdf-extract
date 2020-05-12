@@ -70,31 +70,31 @@ public class SentenceJoin {
 			return;
 
 		_workerStatus = WorkerStatus.LOADING;
-
-		// Execute command line to start process
-		String[] commands = new String[4];
-		commands[0] = _sScriptPath;
-		commands[1] = "--apply";
-		commands[2] = "--model";
-		commands[3] = _modelPath;
-
-		ProcessBuilder proc = new ProcessBuilder(commands);
-		_proc = proc.start();
-
-		_inStream = _proc.getInputStream();
-		_outStream = _proc.getOutputStream();
-		_errorStream = _proc.getErrorStream();
-
-		// Set reader and scaner
-		_reader = new InputStreamReader(_inStream, "UTF-8");
-		_readerError = new InputStreamReader(_errorStream, "UTF-8");
-
-		// Check error
-		_buffError = new BufferedReader(_readerError);
-		_scan = new Scanner(_reader);
-		_pWriter = new PrintWriter(_outStream);
-
+		
+		// fix issue #35 to prevent invalid _workerStatus
 		try {
+			// Execute command line to start process
+			String[] commands = new String[4];
+			commands[0] = _sScriptPath;
+			commands[1] = "--apply";
+			commands[2] = "--model";
+			commands[3] = _modelPath;
+	
+			ProcessBuilder proc = new ProcessBuilder(commands);
+			_proc = proc.start();
+	
+			_inStream = _proc.getInputStream();
+			_outStream = _proc.getOutputStream();
+			_errorStream = _proc.getErrorStream();
+	
+			// Set reader and scaner
+			_reader = new InputStreamReader(_inStream, "UTF-8");
+			_readerError = new InputStreamReader(_errorStream, "UTF-8");
+	
+			// Check error
+			_buffError = new BufferedReader(_readerError);
+			_scan = new Scanner(_reader);
+			_pWriter = new PrintWriter(_outStream);
 
 			// Run test
 			_pWriter.println("test\ttest");
@@ -166,9 +166,29 @@ public class SentenceJoin {
 			} catch (Exception e) {
 				common.print("execute sentence join [" + _language + "] failed. " + text1 + "\t" + text2 + " ,"
 						+ e.getMessage());
+			}finally {
+				//Fix #36, to read stderr for prevent deadlock.
+				print_error();
 			}
 		}
 
 		return false;
+	}
+	
+	//Fix #36, to read stderr for prevent deadlock.
+	private void print_error() {
+		try {
+			if (_buffError.ready()) {
+				String line = "";
+				while ((line = _buffError.readLine()) != null) {
+					common.print(line);
+					if (!_buffError.ready()) {
+						break;
+					}
+				}
+			}
+		} catch (IOException e) {
+			common.print("execute sentence join failed. "+ e.getMessage());
+		}
 	}
 }
