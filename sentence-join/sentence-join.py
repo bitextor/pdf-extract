@@ -20,6 +20,8 @@ break_token = "___BREAK___"
 #
 # Input when applying is a pair of lines, separated by a tab character
 # Output is prediction if they should be joined
+# 2020-06-01 Modified by Ramoelee : Add a new input parameter --kenlm_path (optional) for difine the kenlm path.
+# ./sentence-join.py --apply --model MY_MODEL --kenlm_path MY_KENLM_PATH
 
 class KenLM(object):
   def __init__(self, cmd):
@@ -163,7 +165,8 @@ def tune_threshold(tune_file):
 
 def runtime_scoring():
   for line in sys.stdin:
-    ##print(line.rstrip())
+    #print( 0/0)
+    #print(line.rstrip())
     try:
       (left_sentence,right_sentence) = line.rstrip().split("\t")
     except:
@@ -187,8 +190,10 @@ def runtime_scoring():
     #print(left_context, right_words[0], right_context, left_words[-1])
     score = score_context(left_context, right_words[0], right_context, left_words[-1])
     #print(score,threshold)
+    #sys.stdout.flush()
     print(score < threshold)
     sys.stdout.flush()
+
 
 parser = argparse.ArgumentParser(description='Command line tool for sentence joining decisions.')
 parser.add_argument('--tune', help='tune the threshold on a sentence-split tune set', action="store_true")
@@ -197,6 +202,7 @@ parser.add_argument('--apply', help='provide a pair of lines for splitting decis
 parser.add_argument('--text', help='text file for training')
 parser.add_argument('--dev', help='text file for tuning')
 parser.add_argument('--model', help='prefix for models (expected extensions forward.binlm and backward.binlm)')
+parser.add_argument('--kenlm_path', help='prefix for kenlm (expected extensions kenlm_query, kenlm_lmplz and kenlm_build_binary)')
 parser.add_argument('--threshold', help='threshold for joining decisions', type=float)
 parser.add_argument('--remove-punctuation', help='remove all punctuation from training and tuning text files', action="store_true")
 args = parser.parse_args()
@@ -217,6 +223,11 @@ if args.tune or args.apply:
   if not args.model:
     print("ERROR: Specify a model prefix!")
     parser.parse_args(["-h"])
+  if args.kenlm_path:
+    kenlm_query = args.kenlm_path + "/query"
+    kenlm_lmplz = args.kenlm_path + "/lmplz"
+    kenlm_build_binary = args.kenlm_path + "/build_binary"
+  #print(kenlm_query + "\n" + kenlm_lmplz + "\n" + kenlm_build_binary)
   kenlm_forward = KenLM([kenlm_query,"-b","-n",args.model + ".forward.binlm"])
   kenlm_backward = KenLM([kenlm_query,"-b","-n",args.model + ".backward.binlm"])
 

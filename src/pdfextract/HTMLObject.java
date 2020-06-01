@@ -37,7 +37,6 @@ public class HTMLObject {
 		public int pageno = 0;
 		public float width = 0;
 		public float height = 0;
-		public float mostHeight = 0;
 		public List<TextObject> texts = new ArrayList<TextObject>();
 		public String language = "";
 	}

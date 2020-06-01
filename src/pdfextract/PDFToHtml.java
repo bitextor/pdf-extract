@@ -1,11 +1,9 @@
 package pdfextract;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
@@ -22,7 +20,7 @@ import com.itextpdf.text.pdf.PdfWriter;
 public class PDFToHtml {
 
 	Common common = new Common();
-	private long timeout = 600;
+	private long timeout = 30;
 
 	public PDFToHtml(long timeout_) {
 		if (timeout_ > 0)
@@ -60,52 +58,38 @@ public class PDFToHtml {
 	 * Extract pdf file to html
 	 */
 	public StringBuffer extract(String inputPath) throws Exception {
-		return extract(inputPath, null);
-	}
 
-	/**
-	 * Extract pdf file to html
-	 */
-	public StringBuffer extract(String inputPath, String outputPath) throws Exception {
+		StringBuffer sb = null;
 
-		File fTempOut = null;
 		try {
-			if (common.IsEmpty(outputPath)) {
-				String name = common.getName(inputPath);
+			sb = new StringBuffer();
 
-				// create temporary output file
-				fTempOut = File.createTempFile(name, ".xml");
-				fTempOut.deleteOnExit();
-				outputPath = fTempOut.getPath();
-			}
-
-			StringBuffer sb = new StringBuffer();
-			String sCommand[] = new String[] { "pdftohtml", "-s", "-i", "-noframes", "-xml", "-fontfullname", inputPath,
-					outputPath };
+//			String sCommand[] = new String[] { "pdftohtml", "-s", "-i", "-noframes", "-xml", "-fontfullname", inputPath,
+//					outputPath };
+			String sCommand[] = new String[] { "pdftohtml", "-stdout", "-i", "-noframes", "-xml", "-fontfullname", inputPath};
 
 			try {
-				executeCommand(sCommand);
+//				executeCommand(sCommand);
+				//#42 Use stdout for pdftohtml 
+				sb.append(executeCommand(sCommand).toString());
 			} catch (Exception e) {
 				String errorMsg = e.getMessage();
 				if (errorMsg.contains("Permission Error:")) {
 					decrypt(inputPath);
-					executeCommand(sCommand);
+					sb = new StringBuffer();
+					try {
+						sb.append(executeCommand(sCommand).toString());
+					} catch (Exception ex) {
+						throw ex;
+					}
 				} else {
 					throw e;
 				}
 			}
-
-			sb.append(FileUtils.readFileToString(fTempOut, "UTF-8"));
-
 			return sb;
 		} catch (Exception e) {
 			throw e;
-		} finally {
-			if (fTempOut != null) {
-				common.deleteFile(fTempOut);
-			}
-			common.deleteFile(outputPath);
-		}
+		} 
 	}
 
 	public void decrypt(String file) throws IOException {
@@ -148,51 +132,62 @@ public class PDFToHtml {
 	/**
 	 * Execute command to extract
 	 */
-	private String executeCommand(String... command) throws Exception {
+	private StringBuilder executeCommand(String... command) throws Exception {
 
 		Process proc = null;
 		boolean bTimeout = false;
+		StringBuilder sbError = null;
+		StringBuilder sb = null;
 		try {
-			StringBuilder sb = new StringBuilder("");
+			sb = new StringBuilder();
+			sbError = new StringBuilder();
 
+//			proc = Runtime.getRuntime().exec("pdftohtml -xml -stdout -fontfullname /home/ramoslee/work/pdfExtract/testing/jordan17p.pdf");
 			proc = Runtime.getRuntime().exec(command);
-
+			
+			//#38 Deadlock on stderr from pdftohtml
+			StreamGobbler errorStreamGobbler = new StreamGobbler("ErrorStream", proc.getErrorStream());
+			StreamGobbler inputStreamGobbler = new StreamGobbler("InputStream", proc.getInputStream());
+			
+			Thread tInput = new Thread(inputStreamGobbler);
+			Thread tError = new Thread(errorStreamGobbler);
+			tError.start();
+			tInput.start();
+			
 			if (!proc.waitFor(timeout, TimeUnit.SECONDS)) {
 				// timeout - kill the process.
 				bTimeout = true;
 				proc.destroyForcibly();
 			}
-
-			// Read result
-			BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream()));
-
-			String line = "";
-			while ((line = reader.readLine()) != null) {
-				sb.append(line + '\n');
-			}
-
-			// Read any errors from the attempted command
-			BufferedReader stdError = new BufferedReader(new InputStreamReader(proc.getErrorStream()));
-			StringBuilder sbError = new StringBuilder();
-			String sProcessError = null;
-			while ((sProcessError = stdError.readLine()) != null) {
-				sbError.append(sProcessError + '\n');
-			}
-
-			if (sbError.length() == 0) {
-				// success
-				return sb.toString();
-			} else {
+			
+			tError.interrupt();
+			tInput.interrupt();
+			
+			tError.join();
+			tInput.join();
+			errorStreamGobbler.CloseBuffer();
+			sbError = errorStreamGobbler.getSbText();
+			sb = inputStreamGobbler.getSbText();
+			
+//			System.out.println(sb.toString());
+			
+			if (sbError.length() > 0) {
 				throw new Exception(sbError.toString());
+			}else {
+				// success
+				return sb;
 			}
+			
 		} catch (IOException e) {
 			if (bTimeout) {
 				throw new TimeoutException(
 						"Timed out waiting for poppler extract pdf reach. (" + timeout + " seconds)");
 			} else {
+				e.printStackTrace();
 				throw e;
 			}
-		} catch (InterruptedException e) {
+		} catch (Exception e) {
+			e.printStackTrace();
 			throw e;
 		} finally {
 			proc.destroy();

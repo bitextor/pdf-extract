@@ -99,7 +99,9 @@ public class Config {
 		_config = new ConfigInfo();
 
 		String sentenceJoinScript = common.getJSONValue(json, "script", "sentence_join");
+		String sKenlmPath = common.getJSONValue(json, "script", "kenlm_path");
 		_config.sentenceJoinScript = sentenceJoinScript;
+		_config.kenlmPath = sKenlmPath;
 
 		for (int i = 0, len = languages.size(); i < len; i++) {
 			JSONObject config = languages.getJSONObject(i);
@@ -138,10 +140,18 @@ public class Config {
 		}
 		return null;
 	}
+	
+	public String getKenlmPath() {
+		if (_config != null && _config.kenlmPath != null) {
+			return _config.kenlmPath;
+		}
+		return null;
+	}
 
 	public static class ConfigInfo {
 		public HashMap<String, LangInfo> langConfig = new HashMap<>();
-		public String sentenceJoinScript = "";
+		public String sentenceJoinScript = null;
+		public String kenlmPath	= null;
 
 	}
 

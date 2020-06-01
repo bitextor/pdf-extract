@@ -154,17 +154,16 @@ public class Common {
 			return 0;
 		}
 	}
-
+	
+	//	Error handling #34
 	public long getLong(Object obj) {
 		try {
-			if (obj == null)
-				return 0;
-			else if (obj.equals(""))
+			if (obj.equals(""))
 				return 0;
 			else
 				return Long.parseLong(obj.toString());
 		} catch (Exception e) {
-			return 0;
+			throw e;
 		}
 	}
 

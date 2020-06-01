@@ -44,12 +44,11 @@ If using your distribution packages for `libprotobuf` is not enough to compile `
 # Sentence-join installation
 
 - Prequisite - KenLM must be installed
-- Set path to KenLM in [sentence-join](sentence-join/sentence-join.py) script file
+- Set path to KenLM in [pdf-extract config file](PDFExtract.json) in secgion `kenlm_path`
 
 ```
-	kenlm_query = "/home/user/kenlm/bin/query"
-	kenlm_lmplz = "/home/user/kenlm/bin/lmplz"
-	kenlm_build_binary = "/home/user/kenlm/bin/build_binary"
+	"sentence_join" : "/home/user/sentence-join/sentence-join.py"
+	"kenlm_path" : "/home/user/kenlm/bin"
 ```
 
 - Download the models for the language pairs that you want to process from `http://data.statmt.org/paracrawl/sentence-join/`

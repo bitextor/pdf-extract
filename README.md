@@ -47,6 +47,7 @@ PDFExtract can be used as a command line tool or as a library within a Java proj
 PDFExtract configuration file, put it into the PDFExtract installation path beside PDFExtract.jar file.
 
 - `script > sentence_join`  specifies the path to the sentence join tool
+- `script > kenlm_path`  specifies the prefix for kenlm (expected extensions kenlm_query, kenlm_lmplz and kenlm_build_binary)
 - `language[name=common] > config`  rules to common use for all
 - `language[name=common] > config > join_word`  rules for joining words ["rule for left side", "rule for right side", "join character"]
 - `language[name=common] > config > absolute_eof`  rules for identify end of sentence ["rule for left side", "rule for right side"]
@@ -62,7 +63,8 @@ PDFExtract configuration file, put it into the PDFExtract installation path besi
 ```
 {
 "script" : {
-	"sentence_join" : "/var/www/html/experiment/sentence-join/git/sentence-join.py"
+	"sentence_join" : "/home/usr/sentence-join/sentence-join.py",
+	"kenlm_path" : "/home/usr/kenlm/bin",
 }, 
 "language" : 
 [
@@ -107,7 +109,7 @@ PDFExtract configuration file, put it into the PDFExtract installation path besi
 	{
 		"name" : "en",
 		"config" : {
-			"sentencejoin_model" : "/var/www/html/experiment/sentence-join/toy-model",
+			"sentencejoin_model" : "/home/usr/models/toy-model",
 			"join_words" : [
 			],
 			"absolute_eof" : [

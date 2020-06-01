@@ -310,6 +310,7 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
+			
 		}
 
 	}
@@ -741,9 +742,6 @@ public class PDFExtract {
 					if (commonInfo != null) {
 						text.text = common.replaceText(commonInfo.normalize, text.text).trim();
 					}
-				}
-				if (mapHeight.size() > 0) {
-					page.mostHeight = getMaxCount(mapHeight);
 				}
 
 			}
@@ -1541,6 +1539,7 @@ public class PDFExtract {
 	 * Execute sentence join by language
 	 */
 	private List<TextObject> sentenceJoin(List<TextObject> texts, String lang) {
+		
 		List<TextObject> newTexts = new ArrayList<>();
 		try {
 
@@ -1556,9 +1555,11 @@ public class PDFExtract {
 				} else {
 
 					String scriptPath = config.getSentenceJoinScript();
+					String sKenlmPath = config.getKenlmPath();
 					String modelPath = getSentenceJoinModel(lang);
 					if (common.IsExist(scriptPath) && !common.IsEmpty(modelPath)) {
-						sj = new SentenceJoin(lang, scriptPath, modelPath);
+						// #43 Change Request: Poppler rewrite
+						sj = new SentenceJoin(lang, scriptPath, modelPath, sKenlmPath);
 						_hashSentenceJoin.put(lang, sj);
 					} else {
 						sj = null;

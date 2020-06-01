@@ -1,14 +1,9 @@
 package pdfextract;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import org.apache.commons.lang.StringUtils;
 
 /**
  * @author MickeyVI
@@ -18,14 +13,7 @@ public class SentenceJoin {
 	private Common common = new Common();
 
 	private String _sScriptPath = "";
-	private InputStream _inStream = null;
-	private OutputStream _outStream = null;
-	private InputStream _errorStream = null;
-	private PrintWriter _pWriter = null;
-	private InputStreamReader _reader = null;
-	private InputStreamReader _readerError = null;
-	private BufferedReader _buffError = null;
-	private Scanner _scan = null;
+	private String _skenlmPath = "";
 	private Process _proc = null;
 
 	private WorkerStatus _workerStatus;
@@ -33,6 +21,8 @@ public class SentenceJoin {
 	private String _modelPath = "";
 	private ExecutorService _executor;
 	private Object _objectWorker = new Object();
+	private StreamGobblerWithOutput _errorStreamGobbler;
+	private StreamGobblerWithOutput _inputStreamGobbler;
 
 	/**
 	 * Constructor
@@ -41,6 +31,14 @@ public class SentenceJoin {
 		_language = lang;
 		_sScriptPath = scriptPath;
 		_modelPath = modelPath;
+		_executor = Executors.newSingleThreadExecutor();
+	}
+	
+	public SentenceJoin(String lang, String scriptPath, String modelPath, String sKenlmPath) {
+		_language = lang;
+		_sScriptPath = scriptPath;
+		_modelPath = modelPath;
+		_skenlmPath = sKenlmPath;
 		_executor = Executors.newSingleThreadExecutor();
 	}
 
@@ -75,36 +73,47 @@ public class SentenceJoin {
 		try {
 			// Execute command line to start process
 			String[] commands = new String[4];
+			if (!StringUtils.isEmpty(_skenlmPath)){ 
+				commands = new String[6];
+			}
+			
 			commands[0] = _sScriptPath;
 			commands[1] = "--apply";
 			commands[2] = "--model";
 			commands[3] = _modelPath;
-	
+			
+			// #43 Poppler rewrite 
+			if (!StringUtils.isEmpty(_skenlmPath)){
+				commands[4] = "--kenlm_path";
+				commands[5] = _skenlmPath;
+			}
+			
 			ProcessBuilder proc = new ProcessBuilder(commands);
+			proc.redirectErrorStream(true); // setting  true
 			_proc = proc.start();
 	
-			_inStream = _proc.getInputStream();
-			_outStream = _proc.getOutputStream();
-			_errorStream = _proc.getErrorStream();
-	
-			// Set reader and scaner
-			_reader = new InputStreamReader(_inStream, "UTF-8");
-			_readerError = new InputStreamReader(_errorStream, "UTF-8");
-	
-			// Check error
-			_buffError = new BufferedReader(_readerError);
-			_scan = new Scanner(_reader);
-			_pWriter = new PrintWriter(_outStream);
+			// Fix issue #36 Deadlock if SentenceJoin writes to stderr
+			this._inputStreamGobbler = new StreamGobblerWithOutput("InputStreamST", _proc.getInputStream(), _proc.getOutputStream(), "test\teating");
+			Thread tInput = new Thread(this._inputStreamGobbler);
+			
+			tInput.start();
+			tInput.join();
+			
 
-			// Run test
-			_pWriter.println("test\ttest");
-			_pWriter.flush();
+			StringBuilder sbError = _inputStreamGobbler.getOutputBuffer();
+						
+			if (_inputStreamGobbler.GetErrorFlag()) {
+				throw new Exception(sbError.toString());
+			}else {
+				// success
+				_workerStatus = WorkerStatus.RUNNING;
+			}
+			_inputStreamGobbler.getSentenceJoin("Someone\tplays football");
 
-			_scan.nextLine();
-			_workerStatus = WorkerStatus.RUNNING;
 
 		} catch (Exception e) {
 			// If load model not finish. It must go to this error.
+			e.printStackTrace();
 			_workerStatus = WorkerStatus.ERROR;
 			throw new Exception("Start sentence join [" + _language + "] failed");
 		}
@@ -117,32 +126,19 @@ public class SentenceJoin {
 	 */
 	public void stop() throws Exception {
 		try {
-			try {
-				if (_outStream != null)
-					_outStream.close();
-			} catch (IOException e) {
-			}
-
-			if (_inStream != null)
-				_inStream.close();
-			if (_pWriter != null)
-				_pWriter.close();
-			if (_buffError != null)
-				_buffError.close();
-			if (_reader != null)
-				_reader.close();
-			if (_readerError != null)
-				_readerError.close();
-			if (_errorStream != null)
-				_errorStream.close();
-			if (_scan != null)
-				_scan.close();
+			
+			if (null != this._inputStreamGobbler)
+				this._inputStreamGobbler.CloseBuffer();
+			
+			if (null != this._errorStreamGobbler)
+				this._errorStreamGobbler.CloseBuffer();
 
 			if (_proc != null)
 				_proc.destroy();
 			_proc = null;
 
 		} catch (Exception e) {
+			// e.printStackTrace();
 			common.print("stop sentence join [" + _language + "] failed. " + e.getMessage());
 		} finally {
 		}
@@ -156,39 +152,17 @@ public class SentenceJoin {
 
 		synchronized (_objectWorker) {
 			try {
-
-				_pWriter.println(text1 + "\t" + text2);
-				_pWriter.flush();
-
-				String sOutput = _scan.nextLine();
+				String sOutput = "";
+				sOutput = _inputStreamGobbler.getSentenceJoin(text1 + "\t" + text2);
 				return common.getBool(sOutput);
 
 			} catch (Exception e) {
 				common.print("execute sentence join [" + _language + "] failed. " + text1 + "\t" + text2 + " ,"
 						+ e.getMessage());
-			}finally {
-				//Fix #36, to read stderr for prevent deadlock.
-				print_error();
 			}
 		}
 
 		return false;
 	}
 	
-	//Fix #36, to read stderr for prevent deadlock.
-	private void print_error() {
-		try {
-			if (_buffError.ready()) {
-				String line = "";
-				while ((line = _buffError.readLine()) != null) {
-					common.print(line);
-					if (!_buffError.ready()) {
-						break;
-					}
-				}
-			}
-		} catch (IOException e) {
-			common.print("execute sentence join failed. "+ e.getMessage());
-		}
-	}
 }
