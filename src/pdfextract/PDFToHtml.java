@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import com.itextpdf.text.pdf.PdfEncryptor;
@@ -64,12 +63,9 @@ public class PDFToHtml {
 		try {
 			sb = new StringBuffer();
 
-//			String sCommand[] = new String[] { "pdftohtml", "-s", "-i", "-noframes", "-xml", "-fontfullname", inputPath,
-//					outputPath };
 			String sCommand[] = new String[] { "pdftohtml", "-stdout", "-i", "-noframes", "-xml", "-fontfullname", inputPath};
 
 			try {
-//				executeCommand(sCommand);
 				//#42 Use stdout for pdftohtml 
 				sb.append(executeCommand(sCommand).toString());
 			} catch (Exception e) {
@@ -77,11 +73,7 @@ public class PDFToHtml {
 				if (errorMsg.contains("Permission Error:")) {
 					decrypt(inputPath);
 					sb = new StringBuffer();
-					try {
-						sb.append(executeCommand(sCommand).toString());
-					} catch (Exception ex) {
-						throw ex;
-					}
+					sb.append(executeCommand(sCommand).toString());
 				} else {
 					throw e;
 				}
@@ -111,9 +103,9 @@ public class PDFToHtml {
 			String inputPathUnlocked = fTemp.getPath();
 			PdfEncryptor.encrypt(reader, new FileOutputStream(inputPathUnlocked), null, null,
 					PdfWriter.ALLOW_ASSEMBLY | PdfWriter.ALLOW_COPY | PdfWriter.ALLOW_DEGRADED_PRINTING
-							| PdfWriter.ALLOW_FILL_IN | PdfWriter.ALLOW_MODIFY_ANNOTATIONS
-							| PdfWriter.ALLOW_MODIFY_CONTENTS | PdfWriter.ALLOW_PRINTING
-							| PdfWriter.ALLOW_SCREENREADERS,
+					| PdfWriter.ALLOW_FILL_IN | PdfWriter.ALLOW_MODIFY_ANNOTATIONS
+					| PdfWriter.ALLOW_MODIFY_CONTENTS | PdfWriter.ALLOW_PRINTING
+					| PdfWriter.ALLOW_SCREENREADERS,
 					false);
 
 			common.moveFile(fTemp.getPath(), file);
@@ -142,42 +134,36 @@ public class PDFToHtml {
 			sb = new StringBuilder();
 			sbError = new StringBuilder();
 
-//			proc = Runtime.getRuntime().exec("pdftohtml -xml -stdout -fontfullname /home/ramoslee/work/pdfExtract/testing/jordan17p.pdf");
 			proc = Runtime.getRuntime().exec(command);
-			
+
 			//#38 Deadlock on stderr from pdftohtml
 			StreamGobbler errorStreamGobbler = new StreamGobbler("ErrorStream", proc.getErrorStream());
 			StreamGobbler inputStreamGobbler = new StreamGobbler("InputStream", proc.getInputStream());
-			
+
 			Thread tInput = new Thread(inputStreamGobbler);
 			Thread tError = new Thread(errorStreamGobbler);
 			tError.start();
 			tInput.start();
-			
+
 			if (!proc.waitFor(timeout, TimeUnit.SECONDS)) {
 				// timeout - kill the process.
 				bTimeout = true;
 				proc.destroyForcibly();
 			}
-			
-			tError.interrupt();
-			tInput.interrupt();
-			
+
 			tError.join();
 			tInput.join();
 			errorStreamGobbler.CloseBuffer();
 			sbError = errorStreamGobbler.getSbText();
 			sb = inputStreamGobbler.getSbText();
-			
-//			System.out.println(sb.toString());
-			
+
 			if (sbError.length() > 0) {
 				throw new Exception(sbError.toString());
 			}else {
 				// success
 				return sb;
 			}
-			
+
 		} catch (IOException e) {
 			if (bTimeout) {
 				throw new TimeoutException(
