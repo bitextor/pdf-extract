@@ -74,6 +74,9 @@ public class PDFExtract {
 	private Config config = null;
 
 	private void initial(String logFilePath, int verbose, String configFile, long timeout) throws Exception {
+		initial(logFilePath, verbose, configFile, timeout, null, null);
+	}
+	private void initial(String logFilePath, int verbose, String configFile, long timeout, String kenlmPath, String sentenceJoinPath) throws Exception {
 		common.setVerbose(verbose);
 		if (common.IsEmpty(logFilePath)) {
 			writeLogFile = false;
@@ -103,7 +106,7 @@ public class PDFExtract {
 			if (common.IsEmpty(configFile) || !common.IsExist(configFile)) {
 				configFile = common.getConfigPath();
 			}
-			config = new Config(configFile);
+			config = new Config(configFile, kenlmPath, sentenceJoinPath);
 		} catch (Exception e) {
 			throw new Exception("initial failed. " + e.getMessage());
 		}
@@ -175,6 +178,10 @@ public class PDFExtract {
 	 */
 	public PDFExtract(String logFilePath, int verbose, String configFile, long timeout) throws Exception {
 		initial(logFilePath, verbose, configFile, timeout);
+	}
+	//#43 Add new arguments for -K<kenlm_path>, -S<sentence_join_path>
+	public PDFExtract(String logFilePath, int verbose, String configFile, long timeout, String kenlmPath, String sentenceJoinPath) throws Exception {
+		initial(logFilePath, verbose, configFile, timeout, kenlmPath, sentenceJoinPath);
 	}
 
 	/**

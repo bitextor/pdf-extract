@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import org.apache.commons.lang.StringUtils;
+
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 
@@ -19,6 +21,10 @@ public class Config {
 	public Config(String path) throws Exception {
 		_path = path;
 		load();
+	}
+	public Config(String path, String kenlmPath, String sentenceJoinPath) throws Exception {
+		_path = path;
+		load(kenlmPath, sentenceJoinPath);
 	}
 
 	private List<NormalizeInfo> getNormalizeList(JSONArray jArray) {
@@ -83,6 +89,10 @@ public class Config {
 	}
 
 	private void load() throws Exception {
+		load(null, null);
+	}
+	//#43 Add new arguments for -K<kenlm_path>, -S<sentence_join_path>
+	private void load(String kenlmPath, String sentenceJoinPath) throws Exception {
 		if (!common.IsExist(_path)) {
 			return;
 		}
@@ -98,10 +108,18 @@ public class Config {
 
 		_config = new ConfigInfo();
 
-		String sentenceJoinScript = common.getJSONValue(json, "script", "sentence_join");
-		String sKenlmPath = common.getJSONValue(json, "script", "kenlm_path");
-		_config.sentenceJoinScript = sentenceJoinScript;
-		_config.kenlmPath = sKenlmPath;
+		if (!StringUtils.isEmpty(sentenceJoinPath) && common.IsExist(sentenceJoinPath)) {
+			_config.sentenceJoinScript = sentenceJoinPath;
+		}else {
+			String sentenceJoinScript = common.getJSONValue(json, "script", "sentence_join");
+			_config.sentenceJoinScript = sentenceJoinScript;
+		}
+		if (!StringUtils.isEmpty(kenlmPath) &&  common.IsExist(kenlmPath)) {
+			_config.kenlmPath = kenlmPath;
+		} else {
+			String sKenlmPath = common.getJSONValue(json, "script", "kenlm_path");
+			_config.kenlmPath = sKenlmPath;
+		}
 
 		for (int i = 0, len = languages.size(); i < len; i++) {
 			JSONObject config = languages.getJSONObject(i);
