@@ -7,8 +7,6 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.commons.io.IOUtils;
-
 import com.itextpdf.text.pdf.PdfEncryptor;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -30,26 +28,12 @@ public class PDFToHtml {
 	 * Extract pdf stream to html
 	 */
 	public StringBuffer extract(ByteArrayInputStream bIn) throws Exception {
-		// create random string for naming input temporary file
-		String rand = common.getStr(Math.random());
-
-		File fTempIn = null;
-
+		StringBuffer sbuf = new StringBuffer();
 		try {
-			// create temporary input file
-			fTempIn = File.createTempFile("pdf-", rand);
-			fTempIn.deleteOnExit();
-
-			// write input stream to temporary input file
-			IOUtils.copy(bIn, new FileOutputStream(fTempIn));
-
-			return extract(fTempIn.getPath());
+			
+			return sbuf.append(executeCommandByteArrayInputStream(bIn).toString());
 		} catch (Exception e) {
 			return new StringBuffer();
-		} finally {
-			if (fTempIn != null) {
-				common.deleteFile(fTempIn);
-			}
 		}
 	}
 
@@ -66,6 +50,7 @@ public class PDFToHtml {
 			String sCommand[] = new String[] { "pdftohtml", "-stdout", "-i", "-noframes", "-xml", "-fontfullname", inputPath};
 
 			try {
+//				executeCommand(sCommand);
 				//#42 Use stdout for pdftohtml 
 				sb.append(executeCommand(sCommand).toString());
 			} catch (Exception e) {
@@ -103,9 +88,9 @@ public class PDFToHtml {
 			String inputPathUnlocked = fTemp.getPath();
 			PdfEncryptor.encrypt(reader, new FileOutputStream(inputPathUnlocked), null, null,
 					PdfWriter.ALLOW_ASSEMBLY | PdfWriter.ALLOW_COPY | PdfWriter.ALLOW_DEGRADED_PRINTING
-					| PdfWriter.ALLOW_FILL_IN | PdfWriter.ALLOW_MODIFY_ANNOTATIONS
-					| PdfWriter.ALLOW_MODIFY_CONTENTS | PdfWriter.ALLOW_PRINTING
-					| PdfWriter.ALLOW_SCREENREADERS,
+							| PdfWriter.ALLOW_FILL_IN | PdfWriter.ALLOW_MODIFY_ANNOTATIONS
+							| PdfWriter.ALLOW_MODIFY_CONTENTS | PdfWriter.ALLOW_PRINTING
+							| PdfWriter.ALLOW_SCREENREADERS,
 					false);
 
 			common.moveFile(fTemp.getPath(), file);
@@ -135,25 +120,96 @@ public class PDFToHtml {
 			sbError = new StringBuilder();
 
 			proc = Runtime.getRuntime().exec(command);
-
+			
 			//#38 Deadlock on stderr from pdftohtml
 			StreamGobbler errorStreamGobbler = new StreamGobbler("ErrorStream", proc.getErrorStream());
 			StreamGobbler inputStreamGobbler = new StreamGobbler("InputStream", proc.getInputStream());
-
+			
 			Thread tInput = new Thread(inputStreamGobbler);
 			Thread tError = new Thread(errorStreamGobbler);
 			tError.start();
 			tInput.start();
-
+			
 			if (!proc.waitFor(timeout, TimeUnit.SECONDS)) {
 				// timeout - kill the process.
 				bTimeout = true;
 				proc.destroyForcibly();
 			}
-
+			
 			tError.join();
 			tInput.join();
+			
 			errorStreamGobbler.CloseBuffer();
+			inputStreamGobbler.CloseBuffer();
+			
+			sbError = errorStreamGobbler.getSbText();
+			sb = inputStreamGobbler.getSbText();
+			
+			if (sbError.length() > 0) {
+				throw new Exception(sbError.toString());
+			}else {
+				// success
+				return sb;
+			}
+			
+		} catch (IOException e) {
+			if (bTimeout) {
+				throw new TimeoutException(
+						"Timed out waiting for poppler extract pdf reach. (" + timeout + " seconds)");
+			} else {
+				throw e;
+			}
+		} catch (Exception e) {
+			throw e;
+		} finally {
+			proc.destroy();
+		}
+	}
+	
+	private StringBuilder executeCommandByteArrayInputStream(ByteArrayInputStream bIn) throws Exception {
+
+		Process proc = null;
+		boolean bTimeout = false;
+		StringBuilder sbError = null;
+		StringBuilder sb = null;
+		try {
+			sb = new StringBuilder();
+			sbError = new StringBuilder();
+			
+			String[] commands = new String[6];
+						
+			commands[0] = "pdftohtml";
+			commands[1] = "-xml";
+			commands[2] = "-fontfullname";
+			commands[3] = "-stdout";
+			commands[4] = "-";
+			commands[5] = "nonsense";
+			
+			ProcessBuilder procBuilder = new ProcessBuilder(commands);
+			proc = procBuilder.start();
+
+			//#38 Deadlock on stderr from pdftohtml
+			StreamGobbler errorStreamGobbler = new StreamGobbler("ErrorStreamST", proc.getErrorStream());
+			StreamGobbler inputStreamGobbler = new StreamGobbler("InputStreamST", proc.getInputStream(),
+					proc.getOutputStream(), bIn);
+			inputStreamGobbler.SetOutputStream();
+			Thread tInput = new Thread(inputStreamGobbler);
+			Thread tError = new Thread(errorStreamGobbler);
+			tError.start();
+			tInput.start();
+			
+			if (!proc.waitFor(timeout, TimeUnit.SECONDS)) {
+				// timeout - kill the process.
+				bTimeout = true;
+				proc.destroyForcibly();
+			}
+			
+			tError.join();
+			tInput.join();
+			
+			errorStreamGobbler.CloseBuffer();
+			inputStreamGobbler.CloseBuffer();
+			
 			sbError = errorStreamGobbler.getSbText();
 			sb = inputStreamGobbler.getSbText();
 
@@ -163,17 +219,15 @@ public class PDFToHtml {
 				// success
 				return sb;
 			}
-
+			
 		} catch (IOException e) {
 			if (bTimeout) {
 				throw new TimeoutException(
 						"Timed out waiting for poppler extract pdf reach. (" + timeout + " seconds)");
 			} else {
-				e.printStackTrace();
 				throw e;
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
 			throw e;
 		} finally {
 			proc.destroy();
