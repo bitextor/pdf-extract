@@ -245,7 +245,7 @@ if args.apply:
     threshold = args.threshold
   elif os.path.exists(args.model + ".threshold"):
     fh = open(args.model + ".threshold", "r")
-    threshold = fh.readlines()[0].rstrip().split(" ")[1]
+    threshold = float(fh.readlines()[0].rstrip().split(" ")[1])
   runtime_scoring()
 
 # if no action is specified, complain
