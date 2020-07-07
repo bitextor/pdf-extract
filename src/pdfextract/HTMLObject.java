@@ -1,6 +1,7 @@
 package pdfextract;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -21,7 +22,6 @@ public class HTMLObject {
 
 	public static class TextObject extends BoxObject {
 		public String text = "";
-		public String style = "";
 		public float fontsize = 0;
 		public String fontfamily = "";
 		public String fontweight = "";
@@ -49,11 +49,13 @@ public class HTMLObject {
 		public List<LangObject> langList = new ArrayList<>();
 		public List<WarnObject> warningList = new ArrayList<>();
 		public AccessPermission permission = new AccessPermission();
+		public HashMap<String, StyleObject> style = new HashMap<String, StyleObject>();
 	}
 
 	public static class LangObject {
 		public String name = "";
 		public float percent = 0;
+		public int count = 0;
 	}
 
 	public static class StyleObject {

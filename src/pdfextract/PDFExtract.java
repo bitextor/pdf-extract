@@ -1,12 +1,5 @@
 package pdfextract;
 
-import pdfextract.Config.EOFInfo;
-import pdfextract.Config.JoinWordInfo;
-import pdfextract.Config.LangInfo;
-import pdfextract.Config.NormalizeInfo;
-import pdfextract.DetectLanguage.LanguageResult;
-import pdfextract.HTMLObject.*;
-import pdfextract.SentenceJoin.WorkerStatus;
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -17,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
@@ -26,12 +18,25 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.apache.commons.io.IOUtils;
+
 import com.google.common.collect.Lists;
 import com.itextpdf.text.pdf.PdfEncryptor;
 import com.itextpdf.text.pdf.PdfReader;
+
+import pdfextract.Config.EOFInfo;
+import pdfextract.Config.JoinWordInfo;
+import pdfextract.Config.LangInfo;
+import pdfextract.Config.NormalizeInfo;
+import pdfextract.DetectLanguage.LanguageResult;
+import pdfextract.HTMLObject.DocumentObject;
+import pdfextract.HTMLObject.LangObject;
+import pdfextract.HTMLObject.PageObject;
+import pdfextract.HTMLObject.StyleObject;
+import pdfextract.HTMLObject.TextObject;
+import pdfextract.HTMLObject.WarnObject;
+import pdfextract.SentenceJoin.WorkerStatus;
 
 /**
  * @author MickeyVI
@@ -260,6 +265,7 @@ public class PDFExtract {
 			 * Call function to convert PDF to HTML
 			 */
 			htmlBuffer = convertPdfToHtml(inputFile);
+//			common.writeLog(logPath, htmlBuffer.toString(), false);
 
 			getHtmlObject(htmlBuffer, refDoc);
 
@@ -696,6 +702,7 @@ public class PDFExtract {
 			}
 
 			doc.pages.add(page);
+			doc.style = mapStyle;
 
 			/**
 			 * Get most width and height of the document
@@ -725,6 +732,8 @@ public class PDFExtract {
 			if (config != null) {
 				commonInfo = config.get("common");
 			}
+			
+			HashMap<String, Integer> mapStyleCount = new HashMap<String, Integer>();
 
 			/**
 			 * Get height + normalize text
@@ -739,6 +748,15 @@ public class PDFExtract {
 						text.deleted = true;
 						continue;
 					}
+					
+					if (!common.IsEmpty(text.class_)) {
+						int count = 0;
+						if (mapStyleCount.containsKey(text.class_)) {
+							count = mapStyleCount.get(text.class_);
+						}
+						mapStyleCount.put(text.class_, count + 1);
+					}
+					
 					if (text.height > 0) {
 						int count = 0;
 						if (mapHeight.containsKey(text.height)) {
@@ -749,9 +767,15 @@ public class PDFExtract {
 					if (commonInfo != null) {
 						text.text = common.replaceText(commonInfo.normalize, text.text).trim();
 					}
+					
+					
 				}
 
 			}
+			
+			// Get Most Style of Document.
+			String keyMostStyle = getMaxLangCount(mapStyleCount);
+			StyleObject mostStyle = doc.style.get(keyMostStyle);
 
 			/**
 			 * Check top to merge line
@@ -788,8 +812,11 @@ public class PDFExtract {
 
 								// merge
 								sb.append(" " + nextText.text.trim());
-								if (!nextText.islink)
-									text.color = nextText.color;
+								if (nextText.islink ) {
+									text.color = mostStyle.color;
+									text.fontfamily = mostStyle.family;
+									text.class_ = mostStyle.id;
+								}
 								if (nextText.top < text.top)
 									text.top = nextText.top;
 								if (nextText.bottom > text.bottom)
@@ -797,6 +824,8 @@ public class PDFExtract {
 								// Change font if nextext is larger than text.
 								if (nextText.text.length() > text.text.length()) {
 									text.fontfamily = nextText.fontfamily;
+									text.color = nextText.color;
+									text.class_ = nextText.class_;
 								}
 								text.right = nextText.right;
 								text.width = text.right - text.left;
@@ -820,6 +849,8 @@ public class PDFExtract {
 			 */
 			for (PageObject page : doc.pages) {
 				List<TextObject> newTexts = new ArrayList<TextObject>();
+				float fLineSpace = new Float("-99.0");
+
 				for (int i = 0, len = page.texts.size(); i < len; i++) {
 					TextObject text = page.texts.get(i);
 
@@ -827,28 +858,41 @@ public class PDFExtract {
 						continue;
 					if (common.IsEmpty(text.text))
 						continue;
-
 					newTexts.add(text);
-
+					
 					if (i + 1 < len) {
 						for (int j = i + 1; j < len; j++) {
 							TextObject nextText = page.texts.get(j);
 
-							if (nextText.deleted)
+							if (nextText.deleted) {
 								continue;
-							if (common.IsEmpty(nextText.text))
+							}
+							
+							if (common.IsEmpty(nextText.text)) {
 								continue;
-
+							}
+							
 							if (text.text.trim().endsWith(",") && isClassChanged(text, nextText)) {
 								newTexts.add(getNewText(paraMarker));
-							} else if (isTooFar(text, nextText) || isFontChanged(text, nextText)) {
+								fLineSpace = -1.0f;
+							} 
+							else 
+								if (isTooFar(text, nextText, fLineSpace) 
+									|| isFontChanged(text, nextText)
+							){
 								newTexts.add(getNewText(paraMarker));
+								fLineSpace = -1.0f;
 							}// Separate paragraph if font style is difference.
 							else if (!text.fontfamily.equals(nextText.fontfamily) 
 									&& text.text.length() > 6 
 									&& nextText.text.length() > 6) {
 								newTexts.add(getNewText(paraMarker));
-							}							
+								fLineSpace = -1.0f;
+							}
+							else {
+								if (fLineSpace < 0)
+									fLineSpace = nextText.top - text.top;
+							}
 							break;
 						}
 					} else {
@@ -1044,6 +1088,7 @@ public class PDFExtract {
 			return;
 
 		try {
+			HashMap<String, Integer> mapLang = new HashMap<>();
 
 			for (PageObject page : doc.pages) {
 
@@ -1058,7 +1103,7 @@ public class PDFExtract {
 
 					if (common.IsEmpty(text.lang))
 						text.lang = doc.language;
-
+					
 					if (i == 0 || common.IsEmpty(currentLang)) {
 
 						// start first chunk
@@ -1106,11 +1151,61 @@ public class PDFExtract {
 					texts.clear();
 				}
 
+				
+				// Clean Paramaker
+				List<TextObject> tempText = new ArrayList<>();
+				List<TextObject> tempTextJoin = new ArrayList<>();
+				int processingIndex = 0;
+				for (int i = 0; i < newTexts.size() - 2 ; i ++ ) {
+					
+					for (int j = i+1; j < newTexts.size(); j++) {
+						if ((paraMarker.equals(newTexts.get(j).text) || newTexts.get(j).deleted) && !newTexts.get(j-1).deleted) {
+							processingIndex = j-1;
+							
+							if (paraMarker.equals(newTexts.get(j).text)) {
+								for (int k = j+1; k < newTexts.size(); k++) {
+									if (!newTexts.get(k).deleted) {
+										TextObject textleft = newTexts.get(processingIndex);
+										TextObject textright = newTexts.get(k);
+										if (!textleft.lang.equals(textright.lang)){
+											processingIndex = k;
+											break;
+										}
+										tempTextJoin.add(textleft);
+										tempTextJoin.add(textright);
+										
+										tempTextJoin = sentenceJoin(tempTextJoin, textleft.lang);
+
+										if (tempTextJoin.size() > 1) {
+											processingIndex = k;
+										}else{
+											newTexts.get(processingIndex).text = tempTextJoin.get(0).text;
+											newTexts.get(k).deleted = true;
+											newTexts.get(j).deleted = true;
+										}
+										tempTextJoin = new ArrayList<HTMLObject.TextObject>();
+										break;
+									}
+								}
+								
+								if (processingIndex > j) {
+									i = processingIndex - 1;
+									break;
+								}
+							}
+						}
+					}
+					
+				}
+
 				page.texts.clear();
 				page.texts.addAll(newTexts);
 			}
 
-		} finally {
+		}catch (Exception e){
+			
+			e.printStackTrace();
+		}finally {
 			refDoc.set(doc);
 		}
 	}
@@ -1177,10 +1272,12 @@ public class PDFExtract {
 
 		List<String> noModel = new ArrayList<>();
 		for (LangObject lang : doc.langList) {
-			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\" />\n");
-
+			// Add row count by language.
+			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\"" + " rows=\"" + lang.count + "\" "   + "/>\n");
 			SentenceJoin sj = _hashSentenceJoin.get(lang.name);
-			if (sj == null) {
+			
+			// #51 :To prevent Spurious warnings about sentenceJoin models.
+			if (_hashSentenceJoin.containsKey(lang.name) && sj == null) {
 				noModel.add(lang.name);
 			}
 		}
@@ -1237,7 +1334,7 @@ public class PDFExtract {
 					if (common.IsEmpty(text.text))
 						continue;
 
-					if (text.text.equals(paraMarker)) {
+					if (text.text.equals(paraMarker) && !text.deleted) {
 						if (bpara) {
 							sbOut.append("</p>\n");
 							bpara = false;
@@ -1245,7 +1342,7 @@ public class PDFExtract {
 
 						if (i + 1 < len) {
 
-							if (page.texts.get(i + 1).text.equals(paraMarker))
+							if (page.texts.get(i + 1).text.equals(paraMarker) && !page.texts.get(i + 1).deleted)
 								continue;
 							if (common.IsEmpty(page.texts.get(i + 1).text))
 								continue;
@@ -1422,14 +1519,32 @@ public class PDFExtract {
 
 	/**
 	 * Check next text is too far
+	 * Modify the method for line space and left position to specify paragraph.
 	 */
-	private boolean isTooFar(TextObject text, TextObject nextText) {
-		if (text.top - text.bottom > text.height || nextText.top - text.bottom > nextText.height
-				|| Math.abs(text.top - nextText.top) > (text.height + nextText.height) / 2 * 5) {
-			return true;
-		} else {
-			return false;
+	private boolean isTooFar(TextObject text, TextObject nextText, float fLinespace) {
+		boolean bResult;
+		float ftempLineSpace = 0.0f;
+		if (fLinespace > 0) {
+			ftempLineSpace = Math.abs(text.top - nextText.top);
+			if ((ftempLineSpace >= 0.7*fLinespace && ftempLineSpace <= 1.30*fLinespace) && 
+					(text.left - nextText.left  < 0  ||  text.left - nextText.left > 0 )) {
+				bResult = true;
+			}else if (ftempLineSpace < 0.7*fLinespace || ftempLineSpace > 1.30*fLinespace){
+				bResult = true;
+			}else {
+				bResult = false;
+			}
+		}else {
+			if ((Math.abs(text.top - nextText.top) > (text.height + nextText.height)*1.5) || !(Math.abs(text.left - nextText.left)  <= 100 && Math.abs(text.left - nextText.left) >=0 ) 
+//					|| (Math.abs((text.width + text.left)  - (nextText.left + nextText.width)) >= 50 )
+					|| (text.text.length() <=10)
+					) {
+				bResult = true;
+			} else {
+				bResult = false;
+			}
 		}
+		return bResult;
 	}
 
 	/**
@@ -1485,6 +1600,7 @@ public class PDFExtract {
 			LangObject lang = new LangObject();
 			lang.name = hash.getKey();
 			lang.percent = percent;
+			lang.count = hash.getValue();
 			langList.add(lang);
 		}
 
@@ -1550,8 +1666,9 @@ public class PDFExtract {
 		List<TextObject> newTexts = new ArrayList<>();
 		try {
 
-			if (texts.size() < 2)
+			if (texts.size() < 2) {
 				return texts;
+			}
 
 			SentenceJoin sj;
 
@@ -1591,7 +1708,8 @@ public class PDFExtract {
 						String text2 = getFirstWords(text.text).trim();
 
 						boolean isJoin = false;
-						if (!common.IsEmpty(text1) && !common.IsEmpty(text2) && !text1.trim().endsWith(".")
+						if (!common.IsEmpty(text1) && !common.IsEmpty(text2) 
+								&& !text1.trim().endsWith(".")
 								&& !text2.trim().startsWith("•") && !text1.trim().equals(" ")
 								&& !text2.trim().equals(" ")) {
 							isJoin = sj.execute(text1, text2);
