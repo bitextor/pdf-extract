@@ -323,7 +323,8 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
-			
+			// Shutdown SentenceJoin every file.
+			shutdownProcess();
 		}
 
 	}
@@ -423,6 +424,8 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
+			// Shutdown SentenceJoin every file.
+			shutdownProcess();
 		}
 	}
 
@@ -1088,7 +1091,6 @@ public class PDFExtract {
 			return;
 
 		try {
-			HashMap<String, Integer> mapLang = new HashMap<>();
 
 			for (PageObject page : doc.pages) {
 
@@ -1153,7 +1155,6 @@ public class PDFExtract {
 
 				
 				// Clean Paramaker
-				List<TextObject> tempText = new ArrayList<>();
 				List<TextObject> tempTextJoin = new ArrayList<>();
 				int processingIndex = 0;
 				for (int i = 0; i < newTexts.size() - 2 ; i ++ ) {
@@ -1271,6 +1272,8 @@ public class PDFExtract {
 		sbOut.append("<languages>\n");
 
 		List<String> noModel = new ArrayList<>();
+		List<String> errorModel = new ArrayList<>();
+
 		for (LangObject lang : doc.langList) {
 			// Add row count by language.
 			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\"" + " rows=\"" + lang.count + "\" "   + "/>\n");
@@ -1279,11 +1282,18 @@ public class PDFExtract {
 			// #51 :To prevent Spurious warnings about sentenceJoin models.
 			if (_hashSentenceJoin.containsKey(lang.name) && sj == null) {
 				noModel.add(lang.name);
+			} else if (null != sj && sj.status() == WorkerStatus.ERROR) {
+				errorModel.add(lang.name);
 			}
 		}
 		if (noModel.size() > 0) {
 			doc.warningList
 					.add(new WarnObject("sentenceJoin", "No model for language: " + String.join(", ", noModel) + ""));
+		}
+
+		if (errorModel.size() > 0) {
+			doc.warningList.add(
+					new WarnObject("sentenceJoin", "Fail loading model for language: " + String.join(", ", errorModel) + ""));
 		}
 		sbOut.append("</languages>\n");
 		if (doc.warningList.size() > 0) {

@@ -71,6 +71,7 @@ public class SentenceJoin {
 		
 		// fix issue #35 to prevent invalid _workerStatus
 		try {
+			StringBuilder sbError = new StringBuilder();
 			// Execute command line to start process
 			String[] commands = new String[4];
 			if (!StringUtils.isEmpty(_skenlmPath)){ 
@@ -89,20 +90,23 @@ public class SentenceJoin {
 			}
 			
 			ProcessBuilder proc = new ProcessBuilder(commands);
-			proc.redirectErrorStream(true); // setting  true
+			//#50 Set to false to prevent error: This binary file contains Trie with Quantization and array-compressed pointers.
+			proc.redirectErrorStream(false); // setting  true
 			_proc = proc.start();
 	
 			// Fix issue #36 Deadlock if SentenceJoin writes to stderr
 			this._inputStreamGobbler = new StreamGobblerWithOutput("InputStreamST", _proc.getInputStream(), _proc.getOutputStream(), "test\teating");
+			this._errorStreamGobbler = new StreamGobblerWithOutput("ErrorStreamST", _proc.getErrorStream());
 			Thread tInput = new Thread(this._inputStreamGobbler);
+			Thread tError = new Thread(this._errorStreamGobbler);
 			
+			tError.start();
 			tInput.start();
 			tInput.join();
-			
 
-			StringBuilder sbError = _inputStreamGobbler.getOutputBuffer();
-						
-			if (_inputStreamGobbler.GetErrorFlag()) {
+			sbError = _errorStreamGobbler.getOutputBuffer();
+
+			if (sbError.length() > 0) {
 				throw new Exception(sbError.toString());
 			}else {
 				// success
