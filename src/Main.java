@@ -7,8 +7,9 @@ import pdfextract.PDFExtract;
 public class Main {
 	public static void main(String[] args) {
 		PDFExtract oExtractor = null;
-		try {
 
+//		args[0] = "--help";
+		try {
 			Common common = new Common();
 
 			if (args == null || args.length == 0 || args[0].equals("--help")) {
@@ -22,7 +23,7 @@ public class Main {
 			}
 
 			String input = "", output = "", batchfile = "", logpath = "", threadcount = "", verbose = "",
-					keepbrtags = "", getperms = "", configfile = "", timeout = "";
+					keepbrtags = "", getperms = "", configfile = "", timeout = "", kenlmPath = "", sentenceJoinPath = "";
 			String key = "";
 
 			/**
@@ -60,18 +61,23 @@ public class Main {
 						configfile = parm;
 					} else if (key.equals("t")) {
 						timeout = parm;
+					}else if (key.equals("K")) {
+						kenlmPath = parm;
+					}else if (key.equals("S")) {
+						sentenceJoinPath = parm;
 					}
 					key = "";
 				}
-			}
 
+			}
 			common.setVerbose(common.getInt(verbose));
 			if (!common.IsEmpty(input) && !common.IsEmpty(output)) {
 				/**
 				 * Call function to extract single PDF file
 				 */
 				try {
-					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile, common.getLong(timeout));
+					//#43 Add new arguments for -K<kenlm_path>, -S<sentence_join_path>
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile, common.getLong(timeout), kenlmPath, sentenceJoinPath);
 					oExtractor.Extract(input, output, common.getInt(keepbrtags), common.getInt(getperms));
 				} catch (Exception e) {
 					common.print("File: " + input + ", " + e.getMessage());
@@ -82,7 +88,8 @@ public class Main {
 				 * Call function to extract PDF with batch file
 				 */
 				try {
-					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile, common.getLong(timeout));
+					//#43 Add new arguments for -K<kenlm_path>, -S<sentence_join_path>
+					oExtractor = new PDFExtract(logpath, common.getInt(verbose), configfile, common.getLong(timeout), kenlmPath, sentenceJoinPath);
 					oExtractor.Extract(batchfile, common.getInt(threadcount), common.getInt(keepbrtags),
 							common.getInt(getperms));
 				} catch (Exception e) {

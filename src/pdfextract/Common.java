@@ -154,17 +154,16 @@ public class Common {
 			return 0;
 		}
 	}
-
+	
+	//	Error handling #34
 	public long getLong(Object obj) {
 		try {
-			if (obj == null)
-				return 0;
-			else if (obj.equals(""))
+			if (obj.equals(""))
 				return 0;
 			else
 				return Long.parseLong(obj.toString());
 		} catch (Exception e) {
-			return 0;
+			throw e;
 		}
 	}
 
@@ -312,7 +311,11 @@ public class Common {
 		System.out.print("--keepbrtags\t\t");
 		System.out.println(
 				"by default <br /> is not included in the output. \n\t\t\tWhen this argument is specified, then the output will include the <br /> tag after each line.");
-
+		System.out.print("-S <sentence_join>\t");
+		System.out.println("specifies the Sentence Join python script path.");
+		
+		System.out.print("-K <Kenlm_Path>\t\t");
+		System.out.println("specifies the Kenlm path.");
 		System.out.println("------------------------");
 	}
 

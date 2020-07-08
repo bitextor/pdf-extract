@@ -39,6 +39,26 @@ mvn package
 ## Protobuf installation issues
 If using your distribution packages for `libprotobuf` is not enough to compile `cld3`, please, install it manually (you can follow `bitextor` instructions: https://github.com/bitextor/bitextor#language-detector)
 
+
+
+# Sentence-join installation
+
+- Prequisite - KenLM must be installed
+- Set path to KenLM in [pdf-extract config file](PDFExtract.json) in secgion `kenlm_path`
+
+```
+	"sentence_join" : "/home/user/sentence-join/sentence-join.py"
+	"kenlm_path" : "/home/user/kenlm/bin"
+```
+
+- Download the models for the language pairs that you want to process from `http://data.statmt.org/paracrawl/sentence-join/`
+- Set path with prefix for models (expected extensions forward.binlm and backward.binlm) in [pdf-extract config file](PDFExtract.json) in section `sentencejoin_model` for each language
+
+```
+	"sentencejoin_model" : "/home/user/models/en/opus",
+```
+
+
 # Dependencies
 All dependencies are included in the project folder.
 
