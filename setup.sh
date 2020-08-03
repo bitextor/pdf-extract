@@ -64,7 +64,10 @@ else
 	setupTmpDir="setup-tmp"
 	[ ! -d "$setupTmpDir" ] && mkdir "$setupTmpDir"
 	cd $setupTmpDir
-
+	rm -rf cld3
+	rm -rf pdf-extract
+	rm -rf cld3-Java
+	
 	if [ "$MODE" != "compile" ]; then
 		echo "###"
 		echo "### Install prerequisite programs ###"
@@ -151,12 +154,14 @@ else
 	echo "### Build PDFExtract ###"
 	echo "###"
 	if [ -d "pdf-extract" ]; then rm -Rf "pdf-extract"; fi
-	git clone -b poppler-rewrite https://github.com/bitextor/pdf-extract.git
-	cd pdf-extract/PDFExtract
+	git clone https://github.com/bitextor/pdf-extract.git
+	cd pdf-extract/
 	mvn clean install -DskipTests
-	cd ../../../
-	cp $setupTmpDir/pdf-extract/PDFExtract/PDFExtract.json .
-	cp $setupTmpDir/pdf-extract/PDFExtract/target/PDFExtract*.jar .
+	cd ../../
+	cp $setupTmpDir/pdf-extract/PDFExtract.json .
+	cp $setupTmpDir/pdf-extract/target/PDFExtract*.jar .
+
+	rm -rf $setupTmpDir
 	ls -l
 fi
 
