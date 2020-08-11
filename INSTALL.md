@@ -8,17 +8,8 @@
 - Go into `work` directory then execute setup script.
 
 ```
-apt-get update
-apt-get install build-essential git ant maven protobuf-compiler libprotobuf-dev cmake poppler-utils openjdk-8-jdk
-
-git clone https://github.com/bitextor/pdf-extract.git --recursive
-
-cd pdf-extract
-cd cld3-Java
-ant jar
-mvn install:install-file -Dfile=cld3-java.jar -DgroupId=cld3-java -DartifactId=cld3-java -Dversion=1.0 -Dpackaging=jar
-cd ..
-mvn package
+cd work
+sudo bash setup.sh
 ```
 
 - After setup finish, there will have `PDFExtract-2.0.jar` and `PDFExtract.json` in `target` folder.
@@ -31,9 +22,9 @@ mvn package
 
 - You can now run the PDFExtract-2.0.jar via command line using the instructions in [README.md](README.md)
 
-- PDFExtract project is now in `/work/setup-tmp/pdf-extract/PDFExtract` directory.
+- PDFExtract project is now in `/work/setup-tmp/pdf-extract` directory.
 
-- And java library for PDFExtract in `/work/setup-tmp/pdf-extract/PDFExtract/target/`.
+- And java library for PDFExtract in `/work/setup-tmp/pdf-extract/target/`.
 
 
 ## Protobuf installation issues
