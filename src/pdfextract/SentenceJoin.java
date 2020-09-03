@@ -23,6 +23,8 @@ public class SentenceJoin {
 	private Object _objectWorker = new Object();
 	private StreamGobblerWithOutput _errorStreamGobbler;
 	private StreamGobblerWithOutput _inputStreamGobbler;
+	public boolean isKenlmError = false;
+
 
 	/**
 	 * Constructor
@@ -117,9 +119,13 @@ public class SentenceJoin {
 
 		} catch (Exception e) {
 			// If load model not finish. It must go to this error.
-			e.printStackTrace();
+			
+			// #54 Accurate the error warning message.
+			if (null != e.getMessage() && e.getMessage().contains("KenLM")) {
+				isKenlmError = true;
+			}
 			_workerStatus = WorkerStatus.ERROR;
-			throw new Exception("Start sentence join [" + _language + "] failed");
+			throw new Exception("Start sentence join [" + _language + "] failed: " + e.getMessage());
 		}
 
 		_executor.shutdown();

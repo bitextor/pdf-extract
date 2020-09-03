@@ -69,9 +69,18 @@ public class HTMLObject {
 		public WarnObject(String method_, String detail_) {
 			method = method_;
 			detail = detail_;
+			
+		}
+		
+		public WarnObject(String method_, String detail_, String solution_) {
+			method = method_;
+			solution = solution_;
+			detail = detail_;
+			
 		}
 
 		public String method = "";
+		public String solution = "";
 		public String detail = "";
 	}
 

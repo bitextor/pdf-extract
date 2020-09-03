@@ -20,6 +20,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 
 import com.google.common.collect.Lists;
 import com.itextpdf.text.pdf.PdfEncryptor;
@@ -1262,6 +1263,7 @@ public class PDFExtract {
 
 		DocumentObject doc = refDoc.get();
 		StringBuffer sbOut = new StringBuffer();
+		boolean isKenlmError = false;
 
 		// html
 		sbOut.append("<html>\n");
@@ -1273,7 +1275,7 @@ public class PDFExtract {
 
 		List<String> noModel = new ArrayList<>();
 		List<String> errorModel = new ArrayList<>();
-
+		
 		for (LangObject lang : doc.langList) {
 			// Add row count by language.
 			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\"" + " rows=\"" + lang.count + "\" "   + "/>\n");
@@ -1283,33 +1285,66 @@ public class PDFExtract {
 			if (_hashSentenceJoin.containsKey(lang.name) && sj == null) {
 				noModel.add(lang.name);
 			} else if (null != sj && sj.status() == WorkerStatus.ERROR) {
+				isKenlmError = sj.isKenlmError;
 				errorModel.add(lang.name);
 			}
 		}
-		if (noModel.size() > 0) {
+		
+		
+		// #54 Accurate the error warning message.
+		String scriptPath = config.getSentenceJoinScript();
+		if (StringUtils.isEmpty(scriptPath) || !common.IsExist(scriptPath)) {
 			doc.warningList
-					.add(new WarnObject("sentenceJoin", "No model for language: " + String.join(", ", noModel) + ""));
-		}
+			.add(new WarnObject("sentenceJoin", "Fail loading Python script sentence-join.py","Please specify/verify the \"sentence_join\" value in the configuration files."));
+		}else {
 
-		if (errorModel.size() > 0) {
-			doc.warningList.add(
-					new WarnObject("sentenceJoin", "Fail loading model for language: " + String.join(", ", errorModel) + ""));
+			if (errorModel.size() > 0) {
+				
+				if (isKenlmError) {
+					doc.warningList.add(
+							new WarnObject("sentenceJoin", "Fail loading model for language: " + String.join(", ", errorModel) + ""
+									, "Please verify the KenLM path on the argument of command-line."));
+				}else {
+					doc.warningList.add(
+							new WarnObject("sentenceJoin", "Fail loading model for language: " + String.join(", ", errorModel) + ""
+									, "Please verify the \"sentencejoin_model\" value of language {" + String.join(", ", errorModel) +"} in configuration file."));
+				}
+				
+			}
+			
+			if (noModel.size() > 0) {
+				doc.warningList
+						.add(new WarnObject("sentenceJoin", "No model for language: " + String.join(", ", noModel) + ""
+								, "Please specify the \"sentencejoin_model\" value of language {" + String.join(", ", noModel) +"} in configuration file."));
+			}
 		}
+		
+		
 		sbOut.append("</languages>\n");
 		if (doc.warningList.size() > 0) {
 			sbOut.append("<warnings>" + "\n");
 			for (WarnObject warnObj : doc.warningList) {
 				sbOut.append("<warning>" + "\n");
 				sbOut.append("<method>" + warnObj.method + "</method>" + "\n");
-				sbOut.append("<detail>");
+				sbOut.append("<details>\n");
+				sbOut.append("\t<message>");
+				
 				sbOut.append("<![CDATA[" + "");
-				sbOut.append(warnObj.detail + "");
+				sbOut.append(warnObj.detail);
 				sbOut.append("]]>" + "");
-				sbOut.append("</detail>" + "\n");
+				sbOut.append("</message>" + "\n");
+				sbOut.append("\t<suggestion>");
+				sbOut.append("<![CDATA[" + "");
+				sbOut.append(warnObj.solution);
+				sbOut.append("]]>" + "");
+				sbOut.append("</suggestion>" + "\n");
+				sbOut.append("</details>" + "\n");
 				sbOut.append("</warning>" + "\n");
 			}
 			sbOut.append("</warnings>" + "\n");
 		}
+		// End Accurate the error warning message.
+		
 		if (getPermission == 1) {
 			sbOut.append("<permission isencrypted=\"" + doc.permission.isEncrytped + "\">" + "\n");
 			sbOut.append("<canassemply>" + doc.permission.canAssembly + "</canassemply>" + "\n");
