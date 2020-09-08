@@ -34,8 +34,8 @@ If using your distribution packages for `libprotobuf` is not enough to compile `
 
 # Sentence-join installation
 
-- Prequisite - KenLM must be installed
-- Set path to KenLM in [pdf-extract config file](PDFExtract.json) in secgion `kenlm_path`
+- Prequisite: [KenLM](https://github.com/kpu/kenlm) or [Moses](https://github.com/moses-smt/mosesdecoder) must be installed
+- Set the KenLM or Moses path in [pdf-extract config file](PDFExtract.json) in secgion `kenlm_path`
 
 ```
 	"sentence_join" : "/home/user/sentence-join/sentence-join.py"
