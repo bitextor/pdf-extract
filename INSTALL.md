@@ -34,7 +34,7 @@ If using your distribution packages for `libprotobuf` is not enough to compile `
 
 # Sentence-join installation
 
-- Prequisite: [KenLM](https://github.com/kpu/kenlm) or [Moses](https://github.com/moses-smt/mosesdecoder) must be installed
+- Prequisite: [KenLM](https://github.com/kpu/kenlm) must be installed or you may use KenLM from [Moses](https://github.com/moses-smt/mosesdecoder).
 - Set the KenLM or Moses path in [pdf-extract config file](PDFExtract.json) in secgion `kenlm_path`
 
 ```

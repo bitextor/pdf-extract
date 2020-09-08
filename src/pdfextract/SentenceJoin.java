@@ -109,7 +109,15 @@ public class SentenceJoin {
 			sbError = _errorStreamGobbler.getOutputBuffer();
 
 			if (sbError.length() > 0) {
-				throw new Exception(sbError.toString());
+			    // #55 to skip the "This binary file contains trie with quantization and array-compressed pointers." from KenLM.
+				// and check error with system exit code.
+				String sTemp = sbError.toString();
+				sTemp = sTemp.replaceAll("(This binary file contains trie with quantization and array\\-compressed pointers\\.)(\\n*)", "");
+				if (!_proc.isAlive() && !StringUtils.isEmpty(sTemp) && _proc.exitValue() != 0)
+					throw new Exception(sTemp.toString());
+				else {
+					_workerStatus = WorkerStatus.RUNNING;
+				}
 			}else {
 				// success
 				_workerStatus = WorkerStatus.RUNNING;

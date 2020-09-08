@@ -22,15 +22,11 @@ break_token = "___BREAK___"
 # Output is prediction if they should be joined
 # 2020-06-01 Modified by Ramoelee : Add a new input parameter --kenlm_path (optional) for define the kenlm path.
 # ./sentence-join.py --apply --model MY_MODEL --kenlm_path MY_KENLM_PATH
-# 2020-09-08 Modified by Ramoelee : point stderr to /dev/null for prevent below warning message from KenLM.
-# warning message: "This binary file contains trie with quantization and array-compressed pointers."
 
 class KenLM(object):
   def __init__(self, cmd):
     self.cmd = cmd
-    #55 to skip the "This binary file contains trie with quantization and array-compressed pointers." from KenLM.
-    f_stderr = open("/dev/null")
-    self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=f_stderr)
+    self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
   def process(self, line):
     input_string = u"%s\n" % line
