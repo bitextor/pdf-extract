@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.itextpdf.text.pdf.PdfEncryptor;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.PdfWriter;
@@ -146,7 +148,13 @@ public class PDFToHtml {
 			sb = inputStreamGobbler.getSbText();
 			
 			if (sbError.length() > 0) {
-				throw new Exception(sbError.toString());
+				String sTemp = sbError.toString();
+				// Skip the warning meesage
+				if (!proc.isAlive() && !StringUtils.isEmpty(sTemp) && proc.exitValue() != 0)
+					throw new Exception(sTemp.toString());
+				else {
+					return sb;
+				}
 			}else {
 				// success
 				return sb;
