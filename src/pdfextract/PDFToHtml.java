@@ -184,14 +184,19 @@ public class PDFToHtml {
 			sb = new StringBuilder();
 			sbError = new StringBuilder();
 			
-			String[] commands = new String[6];
+			String[] commands = new String[8];
 						
 			commands[0] = "pdftohtml";
 			commands[1] = "-xml";
 			commands[2] = "-fontfullname";
 			commands[3] = "-stdout";
-			commands[4] = "-";
-			commands[5] = "nonsense";
+
+			// #56 Over 2M of trash files produced while crawling
+			commands[4] = "-i";
+			commands[5] = "-noframes";
+			
+			commands[6] = "-";
+			commands[7] = "nonsense";
 			
 			ProcessBuilder procBuilder = new ProcessBuilder(commands);
 			proc = procBuilder.start();
@@ -200,6 +205,7 @@ public class PDFToHtml {
 			StreamGobbler errorStreamGobbler = new StreamGobbler("ErrorStreamST", proc.getErrorStream());
 			StreamGobbler inputStreamGobbler = new StreamGobbler("InputStreamST", proc.getInputStream(),
 					proc.getOutputStream(), bIn);
+			
 			inputStreamGobbler.SetOutputStream();
 			Thread tInput = new Thread(inputStreamGobbler);
 			Thread tError = new Thread(errorStreamGobbler);
@@ -221,8 +227,15 @@ public class PDFToHtml {
 			sbError = errorStreamGobbler.getSbText();
 			sb = inputStreamGobbler.getSbText();
 
+
 			if (sbError.length() > 0) {
-				throw new Exception(sbError.toString());
+				String sTemp = sbError.toString();
+				// Skip the warning meesage
+				if (!proc.isAlive() && !StringUtils.isEmpty(sTemp) && proc.exitValue() != 0)
+					throw new Exception(sTemp.toString());
+				else {
+					return sb;
+				}
 			}else {
 				// success
 				return sb;
