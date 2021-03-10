@@ -186,7 +186,7 @@ public class SentenceJoin {
 		synchronized (_objectWorker) {
 			try {
 				String sOutput = "";
-				// Fix issue #50 Sentence join fails when using a batch file: Set last execute time.
+				// Fix issue #57 Sentence join fails when using a batch file: Set last execute time.
 				set_lastExecuteTime(new Date().getTime());
 				sOutput = _inputStreamGobbler.getSentenceJoin(text1 + "\t" + text2);
 				return common.getBool(sOutput);

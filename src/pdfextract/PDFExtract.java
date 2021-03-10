@@ -330,7 +330,7 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
-			// Fix issue #50 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
+			// Fix issue #57 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
 			if (batchFlag) {
 				shutdownProcessLater();
 			}else {
@@ -1813,7 +1813,7 @@ public class PDFExtract {
 		}
 	}
 	
-	// Fix issue #50 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
+	// Fix issue #57 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
 	public void shutdownProcessLater() throws Exception {
 		try {
 			if (_hashSentenceJoin != null && _hashSentenceJoin.size() > 0) {
