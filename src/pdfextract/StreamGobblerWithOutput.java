@@ -56,7 +56,7 @@ public class StreamGobblerWithOutput extends Thread{
 	      String line = null;
 	      
 	      int i = 0;
-	      while ( (line = this.bufferedReader.readLine()) != null )
+	      while (null !=  this.bufferedReader &&  (line = this.bufferedReader.readLine()) != null )
 	      {
 	    	i ++ ;
 	        outputBuffer.append(line + "\n");

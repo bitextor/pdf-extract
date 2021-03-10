@@ -1,5 +1,6 @@
 package pdfextract;
 
+import java.util.Date;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -20,6 +21,7 @@ public class SentenceJoin {
 	private String _language = "";
 	private String _modelPath = "";
 	private ExecutorService _executor;
+	private long _lastExecuteTime;
 	private Object _objectWorker = new Object();
 	private StreamGobblerWithOutput _errorStreamGobbler;
 	private StreamGobblerWithOutput _inputStreamGobbler;
@@ -56,6 +58,19 @@ public class SentenceJoin {
 	 */
 	public WorkerStatus status() {
 		return _workerStatus;
+	}
+	
+	// Set worker Status
+	public void setStatus(WorkerStatus status) {
+		 this._workerStatus = status;
+	}
+
+	public long get_lastExecuteTime() {
+		return _lastExecuteTime;
+	}
+
+	public void set_lastExecuteTime(long _lastExecuteTime) {
+		this._lastExecuteTime = _lastExecuteTime;
 	}
 
 	/**
@@ -107,7 +122,7 @@ public class SentenceJoin {
 			tInput.join();
 
 			sbError = _errorStreamGobbler.getOutputBuffer();
-
+			
 			if (sbError.length() > 0) {
 			    // #55 to skip the "This binary file contains trie with quantization and array-compressed pointers." from KenLM.
 				// and check error with system exit code.
@@ -127,7 +142,7 @@ public class SentenceJoin {
 
 		} catch (Exception e) {
 			// If load model not finish. It must go to this error.
-			
+//			e.printStackTrace();
 			// #54 Accurate the error warning message.
 			if (null != e.getMessage() && e.getMessage().contains("KenLM")) {
 				isKenlmError = true;
@@ -171,10 +186,13 @@ public class SentenceJoin {
 		synchronized (_objectWorker) {
 			try {
 				String sOutput = "";
+				// Fix issue #50 Sentence join fails when using a batch file: Set last execute time.
+				set_lastExecuteTime(new Date().getTime());
 				sOutput = _inputStreamGobbler.getSentenceJoin(text1 + "\t" + text2);
 				return common.getBool(sOutput);
 
 			} catch (Exception e) {
+				// e.printStackTrace();
 				common.print("execute sentence join [" + _language + "] failed. " + text1 + "\t" + text2 + " ,"
 						+ e.getMessage());
 			}

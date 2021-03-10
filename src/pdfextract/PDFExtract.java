@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +79,7 @@ public class PDFExtract {
 	private Object _objectWorker = new Object();
 	private HashMap<String, SentenceJoin> _hashSentenceJoin = new HashMap<>();
 	private Config config = null;
+	private long closeSJTimems = 2000;
 
 	private void initial(String logFilePath, int verbose, String configFile, long timeout) throws Exception {
 		initial(logFilePath, verbose, configFile, timeout, null, null);
@@ -205,6 +207,10 @@ public class PDFExtract {
 	 *                      will include permissions tag into header section.
 	 */
 	public void Extract(String inputFile, String outputFile, int keepBrTags, int getPermission) throws Exception {
+		Extract(inputFile, outputFile, keepBrTags, getPermission, false);
+	}
+	
+	public void Extract(String inputFile, String outputFile, int keepBrTags, int getPermission, boolean batchFlag) throws Exception {
 
 		String outputPath = "";
 		try {
@@ -324,8 +330,13 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
-			// Shutdown SentenceJoin every file.
-			shutdownProcess();
+			// Fix issue #50 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
+			if (batchFlag) {
+				shutdownProcessLater();
+			}else {
+				// Shutdown All model
+				shutdownProcess();
+			}
 		}
 
 	}
@@ -537,7 +548,7 @@ public class PDFExtract {
 						/**
 						 * Call function to extract
 						 */
-						Extract(inputFile, outputFile, keepBrTags, getPermission);
+						Extract(inputFile, outputFile, keepBrTags, getPermission, true);
 
 					} catch (Exception e) {
 						String message = e.getMessage();
@@ -1261,6 +1272,7 @@ public class PDFExtract {
 	 */
 	private StringBuffer generateOutput(AtomicReference<DocumentObject> refDoc, int keepBrTags, int getPermission) {
 
+
 		DocumentObject doc = refDoc.get();
 		StringBuffer sbOut = new StringBuffer();
 		boolean isKenlmError = false;
@@ -1275,7 +1287,7 @@ public class PDFExtract {
 
 		List<String> noModel = new ArrayList<>();
 		List<String> errorModel = new ArrayList<>();
-		
+
 		for (LangObject lang : doc.langList) {
 			// Add row count by language.
 			sbOut.append("<language abbr=\"" + lang.name + "\" percent=\"" + lang.percent + "\"" + " rows=\"" + lang.count + "\" "   + "/>\n");
@@ -1291,7 +1303,7 @@ public class PDFExtract {
 		}
 		
 		
-		// #54 Accurate the error warning message.
+		// #54 Accurate the error warning message.	
 		String scriptPath = config.getSentenceJoinScript();
 		if (StringUtils.isEmpty(scriptPath) || !common.IsExist(scriptPath)) {
 			doc.warningList
@@ -1318,7 +1330,7 @@ public class PDFExtract {
 								, "Please specify the \"sentencejoin_model\" value of language {" + String.join(", ", noModel) +"} in configuration file."));
 			}
 		}
-		
+
 		
 		sbOut.append("</languages>\n");
 		if (doc.warningList.size() > 0) {
@@ -1425,6 +1437,7 @@ public class PDFExtract {
 		sbOut.append("</html>\n");
 
 		return sbOut;
+	
 	}
 
 	/**
@@ -1792,6 +1805,26 @@ public class PDFExtract {
 				for (Map.Entry<String, SentenceJoin> hash : _hashSentenceJoin.entrySet()) {
 					if (hash.getValue() != null) {
 						hash.getValue().stop();
+					}
+				}
+			}
+		} catch (Exception e) {
+			throw e;
+		}
+	}
+	
+	// Fix issue #50 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
+	public void shutdownProcessLater() throws Exception {
+		try {
+			if (_hashSentenceJoin != null && _hashSentenceJoin.size() > 0) {
+				long currentTime = new Date().getTime();
+				for (Map.Entry<String, SentenceJoin> hash : _hashSentenceJoin.entrySet()) {
+					if (hash.getValue() != null ) {
+						long diff = currentTime - hash.getValue().get_lastExecuteTime();
+						if (diff > closeSJTimems) {
+							hash.getValue().stop();
+							hash.getValue().setStatus(WorkerStatus.STOPPED);
+						}
 					}
 				}
 			}
