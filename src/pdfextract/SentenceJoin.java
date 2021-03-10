@@ -1,6 +1,7 @@
 package pdfextract;
 
-import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -21,11 +22,11 @@ public class SentenceJoin {
 	private String _language = "";
 	private String _modelPath = "";
 	private ExecutorService _executor;
-	private long _lastExecuteTime;
 	private Object _objectWorker = new Object();
 	private StreamGobblerWithOutput _errorStreamGobbler;
 	private StreamGobblerWithOutput _inputStreamGobbler;
 	public boolean isKenlmError = false;
+	private Set<String> _registerid = new HashSet<String>();
 
 
 	/**
@@ -65,12 +66,8 @@ public class SentenceJoin {
 		 this._workerStatus = status;
 	}
 
-	public long get_lastExecuteTime() {
-		return _lastExecuteTime;
-	}
-
-	public void set_lastExecuteTime(long _lastExecuteTime) {
-		this._lastExecuteTime = _lastExecuteTime;
+	public Set<String> get_registerid() {
+		return _registerid;
 	}
 
 	/**
@@ -186,8 +183,6 @@ public class SentenceJoin {
 		synchronized (_objectWorker) {
 			try {
 				String sOutput = "";
-				// Fix issue #57 Sentence join fails when using a batch file: Set last execute time.
-				set_lastExecuteTime(new Date().getTime());
 				sOutput = _inputStreamGobbler.getSentenceJoin(text1 + "\t" + text2);
 				return common.getBool(sOutput);
 

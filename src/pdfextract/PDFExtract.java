@@ -9,10 +9,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -79,7 +80,6 @@ public class PDFExtract {
 	private Object _objectWorker = new Object();
 	private HashMap<String, SentenceJoin> _hashSentenceJoin = new HashMap<>();
 	private Config config = null;
-	private long closeSJTimems = 2000;
 
 	private void initial(String logFilePath, int verbose, String configFile, long timeout) throws Exception {
 		initial(logFilePath, verbose, configFile, timeout, null, null);
@@ -207,12 +207,9 @@ public class PDFExtract {
 	 *                      will include permissions tag into header section.
 	 */
 	public void Extract(String inputFile, String outputFile, int keepBrTags, int getPermission) throws Exception {
-		Extract(inputFile, outputFile, keepBrTags, getPermission, false);
-	}
-	
-	public void Extract(String inputFile, String outputFile, int keepBrTags, int getPermission, boolean batchFlag) throws Exception {
 
 		String outputPath = "";
+		UUID uuid = UUID.randomUUID();
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -289,7 +286,7 @@ public class PDFExtract {
 			/**
 			 * Call function to join sentence
 			 */
-			sentenceJoin(refDoc);
+			sentenceJoin(uuid.toString(), refDoc);
 
 			/**
 			 * Call function to final repair
@@ -331,14 +328,8 @@ public class PDFExtract {
 			throw e;
 		} finally {
 			// Fix issue #57 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
-			if (batchFlag) {
-				shutdownProcessLater();
-			}else {
-				// Shutdown All model
-				shutdownProcess();
-			}
+			shutdownProcess(uuid.toString());
 		}
-
 	}
 
 	/**
@@ -355,6 +346,7 @@ public class PDFExtract {
 	 */
 	public ByteArrayOutputStream Extract(ByteArrayInputStream inputStream, int keepBrTags, int getPermission)
 			throws Exception {
+		UUID uuid = UUID.randomUUID(); 
 		try {
 			if (writeLogFile) {
 				if (runnable)
@@ -400,7 +392,7 @@ public class PDFExtract {
 			/**
 			 * Call function to join sentence
 			 */
-			sentenceJoin(refDoc);
+			sentenceJoin(uuid.toString(), refDoc);
 
 			/**
 			 * Call function to generate html output
@@ -436,8 +428,8 @@ public class PDFExtract {
 
 			throw e;
 		} finally {
-			// Shutdown SentenceJoin every file.
-			shutdownProcess();
+			// Fix issue #57 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
+			shutdownProcess(uuid.toString());
 		}
 	}
 
@@ -548,7 +540,7 @@ public class PDFExtract {
 						/**
 						 * Call function to extract
 						 */
-						Extract(inputFile, outputFile, keepBrTags, getPermission, true);
+						Extract(inputFile, outputFile, keepBrTags, getPermission);
 
 					} catch (Exception e) {
 						String message = e.getMessage();
@@ -1097,7 +1089,7 @@ public class PDFExtract {
 	/**
 	 * Sentence Join
 	 */
-	private void sentenceJoin(AtomicReference<DocumentObject> refDoc) {
+	private void sentenceJoin(String uuid, AtomicReference<DocumentObject> refDoc) {
 		DocumentObject doc = refDoc.get();
 		if (common.IsEmpty(doc.language))
 			return;
@@ -1139,7 +1131,7 @@ public class PDFExtract {
 							newTexts.add(getNewText(paraMarker));
 						}
 
-						newTexts.addAll(sentenceJoin(texts, currentLang));
+						newTexts.addAll(sentenceJoin(uuid, texts, currentLang));
 
 						// start new chunk
 						texts.clear();
@@ -1161,7 +1153,7 @@ public class PDFExtract {
 
 				if (texts.size() > 0) {
 					newTexts.add(getNewText(paraMarker));
-					newTexts.addAll(sentenceJoin(texts, currentLang));
+					newTexts.addAll(sentenceJoin(uuid, texts, currentLang));
 					texts.clear();
 				}
 
@@ -1187,7 +1179,7 @@ public class PDFExtract {
 										tempTextJoin.add(textleft);
 										tempTextJoin.add(textright);
 										
-										tempTextJoin = sentenceJoin(tempTextJoin, textleft.lang);
+										tempTextJoin = sentenceJoin(uuid, tempTextJoin, textleft.lang);
 
 										if (tempTextJoin.size() > 1) {
 											processingIndex = k;
@@ -1303,7 +1295,7 @@ public class PDFExtract {
 		}
 		
 		
-		// #54 Accurate the error warning message.	
+		// #54 Accurate the error warning message.		
 		String scriptPath = config.getSentenceJoinScript();
 		if (StringUtils.isEmpty(scriptPath) || !common.IsExist(scriptPath)) {
 			doc.warningList
@@ -1719,7 +1711,7 @@ public class PDFExtract {
 	/**
 	 * Execute sentence join by language
 	 */
-	private List<TextObject> sentenceJoin(List<TextObject> texts, String lang) {
+	private List<TextObject> sentenceJoin(String uuid, List<TextObject> texts, String lang) {
 		
 		List<TextObject> newTexts = new ArrayList<>();
 		try {
@@ -1734,6 +1726,8 @@ public class PDFExtract {
 
 				if (_hashSentenceJoin.containsKey(lang)) {
 					sj = _hashSentenceJoin.get(lang);
+					// Fix issue #57 Sentence join fails when using a batch file: Set last execute time.
+					sj.get_registerid().add(uuid);
 				} else {
 
 					String scriptPath = config.getSentenceJoinScript();
@@ -1752,10 +1746,14 @@ public class PDFExtract {
 				// Fix Issue #35 to prevent call start() multiple time in one language id.
 				if (sj != null && sj.status() != WorkerStatus.RUNNING && sj.status() != WorkerStatus.LOADING && sj.status() != WorkerStatus.ERROR) {
 					sj.start();
+					// Fix issue #57 Sentence join fails when using a batch file: Set last execute time.
+					sj.get_registerid().add(uuid);
 				}
 			}
 
 			if (sj != null && sj.status() == WorkerStatus.RUNNING) {
+				// Fix issue #57 Sentence join fails when using a batch file: Set last execute time.
+				sj.get_registerid().add(uuid);
 				for (int i = texts.size() - 1, start = 0; i >= start; i--) {
 					TextObject text = texts.get(i);
 
@@ -1805,6 +1803,7 @@ public class PDFExtract {
 				for (Map.Entry<String, SentenceJoin> hash : _hashSentenceJoin.entrySet()) {
 					if (hash.getValue() != null) {
 						hash.getValue().stop();
+						hash.getValue().setStatus(WorkerStatus.STOPPED);
 					}
 				}
 			}
@@ -1814,16 +1813,23 @@ public class PDFExtract {
 	}
 	
 	// Fix issue #57 Sentence join fails when using a batch file: Checking the model has been being used or not before terminate the model.
-	public void shutdownProcessLater() throws Exception {
+	public void shutdownProcess(String uuid) throws Exception {
 		try {
 			if (_hashSentenceJoin != null && _hashSentenceJoin.size() > 0) {
-				long currentTime = new Date().getTime();
 				for (Map.Entry<String, SentenceJoin> hash : _hashSentenceJoin.entrySet()) {
+					
+					
 					if (hash.getValue() != null ) {
-						long diff = currentTime - hash.getValue().get_lastExecuteTime();
-						if (diff > closeSJTimems) {
-							hash.getValue().stop();
-							hash.getValue().setStatus(WorkerStatus.STOPPED);
+						Set<String> registerid = hash.getValue().get_registerid();
+//						common.print(hash.getKey() + " " + uuid + " *Before Size:::::::::" + registerid.size());
+//						common.print(hash.getKey() + " " + registerid);
+						if (registerid.contains(uuid)) {
+							registerid.remove(uuid);
+//							common.print(hash.getKey() + " " +"*After Size:::::::::" + registerid.size());
+							if (registerid.size() == 0) {
+								hash.getValue().setStatus(WorkerStatus.STOPPED);
+								hash.getValue().stop();
+							}
 						}
 					}
 				}
@@ -1832,4 +1838,5 @@ public class PDFExtract {
 			throw e;
 		}
 	}
+	
 }
